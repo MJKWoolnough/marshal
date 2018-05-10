@@ -7,13 +7,13 @@ type Config struct {
 
 type Option func(*Config)
 
-func Binary() Options {
+func Binary() Option {
 	return func(c *Config) {
 		c.Binary = true
 	}
 }
 
-func JSON() Options {
+func JSON() Option {
 	return func(c *Config) {
 		c.JSON = true
 	}
