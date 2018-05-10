@@ -106,15 +106,15 @@ Loop:
 	f, err := os.Create(tmpGenFile)
 	e("error creating generator file", err)
 
-	_, err = fmt.Fprintf(f, template, packageName, typeName, outputFilename, options)
+	_, err = fmt.Fprintf(f, template, packageName, typeName, packageName, outputFilename, options)
 	e("error writing generator file", err)
 	e("error closing generator file", f.Close())
 
 	ct := exec.Command("go", "test")
 	ct.Dir = c.Dir
-	e("error running `go test` (2)", ct.Run())
-
+	err = ct.Run()
 	e("error removing temporary file", os.Remove(tmpGenFile))
+	e("error running `go test` (2)", err)
 }
 
 const template = `package %s
@@ -126,7 +126,7 @@ import (
 )
 
 func TestMarshalGenerator(t *testing.T) {
-	if err := marshal.Generate((*%s)(nil), %q%s); err != nil {
+	if err := marshal.Generate((*%s)(nil), %q, %q%s); err != nil {
 		t.Fatal(err)
 	}
 }
