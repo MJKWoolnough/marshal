@@ -110,7 +110,7 @@ Loop:
 	e("error writing generator file", err)
 	e("error closing generator file", f.Close())
 
-	ct := exec.Command("go", "test")
+	ct := exec.Command("go", "test", "-run", "TestMarshalGenerator")
 	ct.Dir = c.Dir
 	err = ct.Run()
 	e("error removing temporary file", os.Remove(tmpGenFile))
