@@ -1,4 +1,4 @@
-package main
+package main // import "vimagination.zapto.org/marshal/cmd/marshal"
 
 import (
 	"flag"
@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/MJKWoolnough/errors"
+	"vimagination.zapto.org/errors"
 )
 
 func e(explain string, err error) {
@@ -122,7 +122,7 @@ const template = `package %s
 import (
 	"testing"
 
-	"github.com/MJKWoolnough/marshal"
+	"vimagination.zapto.org/marshal"
 )
 
 func TestMarshalGenerator(t *testing.T) {
