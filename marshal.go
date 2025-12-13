@@ -1,6 +1,7 @@
 package marshal // import "vimagination.zapto.org/marshal"
 
 import (
+	"flag"
 	"fmt"
 	"os"
 )
@@ -14,5 +15,13 @@ func main() {
 }
 
 func run() error {
+	var typename string
+
+	flag.StringVar(&typename, "type", "", "typename to provide marshal/unmarshall functions for")
+
+	return processType(typename, flag.Args())
+}
+
+func processType(typename string, source []string) error {
 	return nil
 }
