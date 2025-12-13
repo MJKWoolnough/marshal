@@ -1,4 +1,4 @@
-package main // import "vimagination.zapto.org/marshal"
+package main
 
 import (
 	"errors"
@@ -55,6 +55,10 @@ func processType(module, typename string) error {
 }
 
 func forStruct(t *types.Struct) error {
+	for field := range t.Fields() {
+		fmt.Println(field.Name(), field.Type())
+	}
+
 	return nil
 }
 
