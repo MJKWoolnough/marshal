@@ -1,9 +1,11 @@
-package marshal // import "vimagination.zapto.org/marshal"
+package main // import "vimagination.zapto.org/marshal"
 
 import (
 	"flag"
 	"fmt"
 	"os"
+
+	"golang.org/x/tools/go/packages"
 )
 
 func main() {
@@ -15,13 +17,23 @@ func main() {
 }
 
 func run() error {
-	var typename string
+	var typename, module string
 
-	flag.StringVar(&typename, "type", "", "typename to provide marshal/unmarshall functions for")
+	flag.StringVar(&typename, "type", "", "typename to provide marshal/unmarshal functions for")
+	flag.StringVar(&module, "module", "", "path to local module")
 
-	return processType(typename, flag.Args())
+	flag.Parse()
+
+	return processType(module, typename)
 }
 
-func processType(typename string, source []string) error {
+func processType(module, typename string) error {
+	pkgs, err := packages.Load(&packages.Config{Mode: packages.LoadTypes}, module)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(pkgs[0].Types.Scope().Lookup(typename))
+
 	return nil
 }
