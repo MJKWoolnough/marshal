@@ -23,7 +23,7 @@ func ListGoFiles(fsys filesystem) ([]string, error) {
 	ctx := build.Context{
 		GOARCH:   runtime.GOARCH,
 		GOOS:     runtime.GOOS,
-		Compiler: "gc",
+		Compiler: runtime.Compiler,
 		IsDir: func(path string) bool {
 			s, err := fsys.Stat(path)
 			if err != nil {
