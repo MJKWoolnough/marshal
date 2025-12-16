@@ -109,6 +109,8 @@ func TestListFiles(t *testing.T) {
 		t.Fatalf("unexpected error: %s", err)
 	}
 
+	slices.Sort(files)
+
 	expectedFiles := []string{"a.go", "a_" + runtime.GOOS + ".go"}
 
 	if !slices.Equal(files, expectedFiles) {
