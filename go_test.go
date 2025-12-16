@@ -101,6 +101,7 @@ func TestListFiles(t *testing.T) {
 		"a.go":                      "package main\n\nconst a = 1",
 		"a_" + badOS + ".go":        "package main\n\nconst b = 1",
 		"a_" + runtime.GOOS + ".go": "package main\n\nconst b = 2",
+		"go.mod":                    "module example.com/main\n\ngo 1.25.5",
 	}
 
 	files, err := ListGoFiles(&tfs)
