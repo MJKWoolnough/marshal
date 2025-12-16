@@ -3,6 +3,9 @@ package main
 import (
 	"io"
 	"io/fs"
+	"runtime"
+	"slices"
+	"testing"
 	"time"
 )
 
@@ -85,4 +88,29 @@ func (t testFS) ReadFile(name string) ([]byte, error) {
 	}
 
 	return []byte(contents), nil
+}
+
+func TestListFiles(t *testing.T) {
+	badOS := "windows"
+
+	if runtime.GOOS == "windows" {
+		badOS = "darwin"
+	}
+
+	tfs := testFS{
+		"a.go":                      "package main\n\nconst a = 1",
+		"a_" + badOS + ".go":        "package main\n\nconst b = 1",
+		"a_" + runtime.GOOS + ".go": "package main\n\nconst b = 2",
+	}
+
+	files, err := ListGoFiles(&tfs)
+	if err != nil {
+		t.Fatalf("unexpected error: %s", err)
+	}
+
+	expectedFiles := []string{"a.go", "a_" + runtime.GOOS + ".go"}
+
+	if !slices.Equal(files, expectedFiles) {
+		t.Errorf("expecting files %v, got %v", expectedFiles, files)
+	}
 }
