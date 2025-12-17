@@ -141,3 +141,28 @@ func TestParsePackage(t *testing.T) {
 		t.Errorf("expected type %d, got %v", types.Int, b.Kind())
 	}
 }
+
+func TestParseModFile(t *testing.T) {
+	tfs := testFS{
+		"go.mod": `module vimagination.zapto.org/marshal
+
+go 1.25.5
+
+require (
+	golang.org/x/mod v0.31.0
+	golang.org/x/tools v0.40.0
+)
+
+require golang.org/x/sync v0.19.0 // indirect`,
+	}
+
+	if pkg, err := ParseModFile(tfs); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if pkg.Path != "vimagination.zapto.org/marshal" {
+		t.Errorf("expecting path %q, got %q", "vimagination.zapto.org/marshal", pkg.Path)
+	} else if len(pkg.Imports) != 3 {
+		t.Errorf("expecting 3 imports, got %d", len(pkg.Imports))
+	} else if v := pkg.Imports["golang.org/x/mod"]; v != "v0.31.0" {
+		t.Errorf("expecting version for %q to be %q, got %q", "golang.org/x/mod ", "v0.31.0", v)
+	}
+}
