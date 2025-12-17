@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go/types"
 	"io"
 	"io/fs"
 	"runtime"
@@ -116,5 +117,27 @@ func TestListFiles(t *testing.T) {
 
 	if !slices.Equal(files, expectedFiles) {
 		t.Errorf("expecting files %v, got %v", expectedFiles, files)
+	}
+}
+
+func TestParsePackage(t *testing.T) {
+	tfs := testFS{
+		"a.go": "package main\n\ntype A struct {B int}",
+	}
+
+	if pkg, err := ParsePackage(tfs); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if a := pkg.Scope().Lookup("A"); a == nil {
+		t.Error("expected type def, got nil")
+	} else if as, ok := a.Type().Underlying().(*types.Struct); !ok {
+		t.Error("expected struct type")
+	} else if nf := as.NumFields(); nf != 1 {
+		t.Errorf("expected 1 field, got %d", nf)
+	} else if name := as.Field(0).Name(); name != "B" {
+		t.Errorf("expected field name %q, got %q", "B", name)
+	} else if b, ok := as.Field(0).Type().Underlying().(*types.Basic); !ok {
+		t.Error("expected basic type")
+	} else if b.Kind() != types.Int {
+		t.Errorf("expected type %d, got %v", types.Int, b.Kind())
 	}
 }
