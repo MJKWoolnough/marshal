@@ -1,7 +1,12 @@
 package main
 
 import (
+	"errors"
+	"go/ast"
 	"go/build"
+	"go/parser"
+	"go/token"
+	"go/types"
 	"io"
 	"io/fs"
 	"runtime"
@@ -67,4 +72,46 @@ func ListGoFiles(fsys filesystem) ([]string, error) {
 	}
 
 	return pkg.GoFiles, nil
+}
+
+func ParsePackage(fsys filesystem) (*types.Package, error) {
+	files, err := ListGoFiles(fsys)
+	if err != nil {
+		return nil, err
+	}
+
+	fset := token.NewFileSet()
+
+	var pkg string
+
+	parsedFiles := make([]*ast.File, len(files))
+
+	for n, file := range files {
+		f, err := fsys.Open(file)
+		if err != nil {
+			return nil, err
+		}
+
+		pf, err := parser.ParseFile(fset, file, f, parser.AllErrors|parser.ParseComments)
+		if err != nil {
+			return nil, err
+		}
+
+		if pkg == "" {
+			pkg = pf.Name.Name
+		} else if pkg != pf.Name.Name {
+			return nil, errors.New("multiple packages found")
+		}
+
+		parsedFiles[n] = pf
+	}
+
+	var (
+		conf types.Config
+		info = types.Info{
+			Types: make(map[ast.Expr]types.TypeAndValue),
+		}
+	)
+
+	return conf.Check(".", fset, parsedFiles, &info)
 }
