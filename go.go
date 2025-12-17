@@ -11,6 +11,8 @@ import (
 	"io/fs"
 	"runtime"
 	"strings"
+
+	"golang.org/x/mod/modfile"
 )
 
 type filesystem interface {
@@ -114,4 +116,32 @@ func ParsePackage(fsys filesystem) (*types.Package, error) {
 	)
 
 	return conf.Check(".", fset, parsedFiles, &info)
+}
+
+type Module struct {
+	Path    string
+	Imports map[string]string
+}
+
+func ParseModFile(fsys filesystem) (*Module, error) {
+	data, err := fsys.ReadFile("go.mod")
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := modfile.Parse("go.mod", data, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	imports := make(map[string]string, len(f.Require))
+
+	for _, r := range f.Require {
+		imports[r.Mod.Path] = r.Mod.Version
+	}
+
+	return &Module{
+		Path:    f.Module.Mod.Path,
+		Imports: imports,
+	}, nil
 }
