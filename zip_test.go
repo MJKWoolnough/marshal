@@ -27,7 +27,13 @@ func TestZipFS(t *testing.T) {
 
 	z := &zipFS{zr}
 
-	if entries, _ := z.ReadDir("."); len(entries) != 1 {
+	if entries, err := z.ReadDir("not-a-dir"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("expecting error ErrNotExist, got %v", err)
+	} else if entries != nil {
+		t.Errorf("expecting nil entries, got %v", entries)
+	} else if entries, err := z.ReadDir("."); err != nil {
+		t.Errorf("expecting nil error, got %s", err)
+	} else if len(entries) != 1 {
 		t.Errorf("expecting 1 entry, got %d", len(entries))
 	} else if n := entries[0].Name(); n != "package" {
 		t.Errorf("expecting entry name %q, got %q", "package", n)
