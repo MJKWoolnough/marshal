@@ -8,6 +8,8 @@ import (
 	"testing"
 )
 
+var _ filesystem = &zipFS{}
+
 func TestZipFS(t *testing.T) {
 	var buf bytes.Buffer
 
