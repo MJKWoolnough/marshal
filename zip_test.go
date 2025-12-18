@@ -50,4 +50,18 @@ func TestZipFS(t *testing.T) {
 	} else if size := stat.Size(); size != 5 {
 		t.Errorf("expecting size 5, got %d", size)
 	}
+
+	if data, err := z.ReadFile("not-a-file"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("expecting error ErrNotExists, got %v", err)
+	} else if data != nil {
+		t.Errorf("expecting nil data, got %v", data)
+	} else if data, err = z.ReadFile("package/a.txt"); err != nil {
+		t.Errorf("expecting nil error, got %s", err)
+	} else if string(data) != "12345" {
+		t.Errorf("expecting to read %q, got %q", "12345", data)
+	} else if data, err = z.ReadFile("package/b.txt"); err != nil {
+		t.Errorf("expecting nil error, got %s", err)
+	} else if string(data) != "abcdefgh" {
+		t.Errorf("expecting to read %q, got %q", "abcdefgh", data)
+	}
 }
