@@ -3,6 +3,8 @@ package main
 import (
 	"archive/zip"
 	"bytes"
+	"errors"
+	"io/fs"
 	"testing"
 )
 
@@ -33,5 +35,19 @@ func TestZipFS(t *testing.T) {
 		t.Errorf("expecting entry name %q, got %q", "a.txt", n)
 	} else if n := entries[1].Name(); n != "b.txt" {
 		t.Errorf("expecting entry name %q, got %q", "b.txt", n)
+	}
+
+	if stat, err := z.Stat("not-a-file"); !errors.Is(err, fs.ErrNotExist) {
+		t.Errorf("expecting error ErrNotExist, got %v", err)
+	} else if stat != nil {
+		t.Errorf("expecting nil stat, got %v", stat)
+	} else if stat, err = z.Stat("package/"); err != nil {
+		t.Errorf("expecting nil error, got %s", err)
+	} else if !stat.IsDir() {
+		t.Error("expecting IsDir() to be true")
+	} else if stat, err = z.Stat("package/a.txt"); err != nil {
+		t.Errorf("expecting nil error, got %s", err)
+	} else if size := stat.Size(); size != 5 {
+		t.Errorf("expecting size 5, got %d", size)
 	}
 }
