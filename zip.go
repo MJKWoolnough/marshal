@@ -2,6 +2,7 @@ package main
 
 import (
 	"archive/zip"
+	"io"
 	"io/fs"
 	"path/filepath"
 	"strings"
@@ -23,6 +24,15 @@ func (z *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
 	}
 
 	return nil, fs.ErrInvalid
+}
+
+func (z *zipFS) ReadFile(name string) ([]byte, error) {
+	f, err := z.Open(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return io.ReadAll(f)
 }
 
 type zipDir string
