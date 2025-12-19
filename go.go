@@ -9,6 +9,7 @@ import (
 	"go/types"
 	"io"
 	"io/fs"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -160,4 +161,18 @@ func CachedModPath(pkg, version string) (string, error) {
 	}
 
 	return filepath.Join(build.Default.GOPATH, "pkg", "mod", path+"@"+ver), nil
+}
+
+func ModCacheURL(pkg, version string) (string, error) {
+	p, err := module.EscapePath(pkg)
+	if err != nil {
+		return "", err
+	}
+
+	ver, err := module.EscapeVersion(version)
+	if err != nil {
+		return "", err
+	}
+
+	return "https://proxy.golang.org" + path.Join("/", p, "@v", ver+".zip"), nil
 }
