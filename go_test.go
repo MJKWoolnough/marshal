@@ -166,3 +166,12 @@ require golang.org/x/sync v0.19.0 // indirect`,
 		t.Errorf("expecting version for %q to be %q, got %q", "golang.org/x/mod ", "v0.31.0", v)
 	}
 }
+
+func TestModCacheURL(t *testing.T) {
+	url, err := ModCacheURL("golang.org/x/sync", "v0.19.0")
+	if err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if url != "https://proxy.golang.org/golang.org/x/sync/@v/v0.19.0.zip" {
+		t.Errorf("expecting URL %q, got %q", "https://proxy.golang.org/golang.org/x/sync/@v/v0.19.0.zip", url)
+	}
+}
