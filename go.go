@@ -9,10 +9,12 @@ import (
 	"go/types"
 	"io"
 	"io/fs"
+	"path/filepath"
 	"runtime"
 	"strings"
 
 	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 )
 
 type filesystem interface {
@@ -144,4 +146,18 @@ func ParseModFile(fsys filesystem) (*Module, error) {
 		Path:    f.Module.Mod.Path,
 		Imports: imports,
 	}, nil
+}
+
+func CachedModPath(pkg, version string) (string, error) {
+	path, err := module.EscapePath(pkg)
+	if err != nil {
+		return "", err
+	}
+
+	ver, err := module.EscapeVersion(version)
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(build.Default.GOPATH, "pkg", "mod", path+"@"+ver), nil
 }
