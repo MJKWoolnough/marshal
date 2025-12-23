@@ -10,7 +10,12 @@ import (
 )
 
 type zipFS struct {
-	*zip.Reader
+	zip  *zip.Reader
+	base string
+}
+
+func (z *zipFS) Open(name string) (fs.File, error) {
+	return z.zip.Open(filepath.Join(z.base, name))
 }
 
 func (z *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
@@ -45,13 +50,14 @@ func (zipDir) IsDir() bool        { return true }
 func (z zipDir) Sys() any         { return z }
 
 func (z *zipFS) Stat(path string) (fs.FileInfo, error) {
+	path = filepath.Join(z.base, path)
 	pathWithSlash := path
 
 	if !strings.HasSuffix(path, "/") {
 		pathWithSlash += "/"
 	}
 
-	for _, f := range z.File {
+	for _, f := range z.zip.File {
 		if f.Name == path {
 			return f.FileInfo(), nil
 		} else if strings.HasPrefix(f.Name, pathWithSlash) {

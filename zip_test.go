@@ -25,7 +25,7 @@ func TestZipFS(t *testing.T) {
 
 	zr, _ := zip.NewReader(bytes.NewReader(buf.Bytes()), int64(buf.Len()))
 
-	z := &zipFS{zr}
+	z := &zipFS{zr, ""}
 
 	if entries, err := z.ReadDir("not-a-dir"); !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("expecting error ErrNotExist, got %v", err)
