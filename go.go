@@ -1,6 +1,7 @@
 package main
 
 import (
+	"archive/zip"
 	"errors"
 	"go/ast"
 	"go/build"
@@ -9,6 +10,7 @@ import (
 	"go/types"
 	"io"
 	"io/fs"
+	"os"
 	"path"
 	"path/filepath"
 	"runtime"
@@ -16,6 +18,7 @@ import (
 
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/module"
+	"vimagination.zapto.org/httpreaderat"
 )
 
 type filesystem interface {
@@ -180,17 +183,12 @@ func (i *Import) CachedModPath() (string, error) {
 		return i.Base, nil
 	}
 
-	path, err := module.EscapePath(i.Base)
+	dir, err := i.Dir()
 	if err != nil {
 		return "", err
 	}
 
-	ver, err := module.EscapeVersion(i.Version)
-	if err != nil {
-		return "", err
-	}
-
-	return filepath.Join(build.Default.GOPATH, "pkg", "mod", path+"@"+ver), nil
+	return filepath.Join(build.Default.GOPATH, "pkg", "mod", dir), nil
 }
 
 func (i *Import) ModCacheURL() (string, error) {
@@ -205,4 +203,55 @@ func (i *Import) ModCacheURL() (string, error) {
 	}
 
 	return "https://proxy.golang.org" + path.Join("/", p, "@v", ver+".zip"), nil
+}
+
+func (i *Import) Dir() (string, error) {
+	path, err := module.EscapePath(i.Base)
+	if err != nil {
+		return "", err
+	}
+
+	ver, err := module.EscapeVersion(i.Version)
+	if err != nil {
+		return "", err
+	}
+
+	return path + "@" + ver, nil
+}
+
+func (i *Import) AsFS() (filesystem, error) {
+	local, err := i.CachedModPath()
+	if err != nil {
+		return nil, err
+	}
+
+	if s, err := os.Stat(local); err == nil {
+		if s.IsDir() {
+			return os.DirFS(local).(filesystem), nil
+		}
+	} else if !errors.Is(err, fs.ErrNotExist) {
+		return nil, err
+	}
+
+	remote, err := i.ModCacheURL()
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := httpreaderat.NewRequest(remote)
+	if err != nil {
+		return nil, err
+	}
+
+	z, err := zip.NewReader(r, r.Length())
+	if err != nil {
+		return nil, err
+	}
+
+	dir, err := i.Dir()
+	if err != nil {
+		return nil, err
+	}
+
+	return &zipFS{z, dir}, nil
 }
