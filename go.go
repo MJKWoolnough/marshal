@@ -123,7 +123,7 @@ func ParsePackage(fsys filesystem) (*types.Package, error) {
 
 type Module struct {
 	Path    string
-	Imports map[string]string
+	Imports map[string]module.Version
 }
 
 func ParseModFile(fsys filesystem) (*Module, error) {
@@ -137,10 +137,16 @@ func ParseModFile(fsys filesystem) (*Module, error) {
 		return nil, err
 	}
 
-	imports := make(map[string]string, len(f.Require))
+	imports := make(map[string]module.Version, len(f.Require))
 
 	for _, r := range f.Require {
-		imports[r.Mod.Path] = r.Mod.Version
+		imports[r.Mod.Path] = r.Mod
+	}
+
+	for _, r := range f.Replace {
+		if m, ok := imports[r.Old.Path]; ok && (r.Old.Version == "" || r.Old.Version == m.Version) {
+			imports[r.Old.Path] = r.New
+		}
 	}
 
 	return &Module{
@@ -154,14 +160,14 @@ type Import struct {
 }
 
 func (m *Module) Resolve(importURL string) *Import {
-	for url, version := range m.Imports {
+	for url, mod := range m.Imports {
 		if url == importURL {
-			return &Import{Base: url, Version: version, Path: "."}
+			return &Import{Base: mod.Path, Version: mod.Version, Path: "."}
 		} else if strings.HasPrefix(importURL, url) {
 			base := strings.TrimPrefix(importURL, url)
 
 			if strings.HasPrefix(base, "/") {
-				return &Import{Base: url, Version: version, Path: strings.TrimPrefix(base, "/")}
+				return &Import{Base: mod.Path, Version: mod.Version, Path: strings.TrimPrefix(base, "/")}
 			}
 		}
 	}

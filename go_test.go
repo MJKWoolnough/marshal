@@ -162,7 +162,7 @@ require golang.org/x/sync v0.19.0 // indirect`,
 		t.Errorf("expecting path %q, got %q", "vimagination.zapto.org/marshal", pkg.Path)
 	} else if len(pkg.Imports) != 3 {
 		t.Errorf("expecting 3 imports, got %d", len(pkg.Imports))
-	} else if v := pkg.Imports["golang.org/x/mod"]; v != "v0.31.0" {
+	} else if v := pkg.Imports["golang.org/x/mod"]; v.Version != "v0.31.0" {
 		t.Errorf("expecting version for %q to be %q, got %q", "golang.org/x/mod ", "v0.31.0", v)
 	}
 }
