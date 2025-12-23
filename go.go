@@ -149,6 +149,26 @@ func ParseModFile(fsys filesystem) (*Module, error) {
 	}, nil
 }
 
+type Import struct {
+	Base, Version, Path string
+}
+
+func (m *Module) Resolve(importURL string) *Import {
+	for url, version := range m.Imports {
+		if url == importURL {
+			return &Import{Base: url, Version: version, Path: "."}
+		} else if strings.HasPrefix(importURL, url) {
+			base := strings.TrimPrefix(importURL, url)
+
+			if strings.HasPrefix(base, "/") {
+				return &Import{Base: url, Version: version, Path: strings.TrimPrefix(base, "/")}
+			}
+		}
+	}
+
+	return nil
+}
+
 func CachedModPath(pkg, version string) (string, error) {
 	path, err := module.EscapePath(pkg)
 	if err != nil {
