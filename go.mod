@@ -7,4 +7,8 @@ require (
 	golang.org/x/tools v0.40.0
 )
 
-require golang.org/x/sync v0.19.0 // indirect
+require (
+	golang.org/x/sync v0.19.0 // indirect
+	vimagination.zapto.org/cache v1.0.1 // indirect
+	vimagination.zapto.org/httpreaderat v1.0.0 // indirect
+)
