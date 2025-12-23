@@ -175,13 +175,17 @@ func (m *Module) Resolve(importURL string) *Import {
 	return nil
 }
 
-func CachedModPath(pkg, version string) (string, error) {
-	path, err := module.EscapePath(pkg)
+func (i *Import) CachedModPath() (string, error) {
+	if modfile.IsDirectoryPath(i.Base) {
+		return i.Base, nil
+	}
+
+	path, err := module.EscapePath(i.Base)
 	if err != nil {
 		return "", err
 	}
 
-	ver, err := module.EscapeVersion(version)
+	ver, err := module.EscapeVersion(i.Version)
 	if err != nil {
 		return "", err
 	}
@@ -189,13 +193,13 @@ func CachedModPath(pkg, version string) (string, error) {
 	return filepath.Join(build.Default.GOPATH, "pkg", "mod", path+"@"+ver), nil
 }
 
-func ModCacheURL(pkg, version string) (string, error) {
-	p, err := module.EscapePath(pkg)
+func (i *Import) ModCacheURL() (string, error) {
+	p, err := module.EscapePath(i.Base)
 	if err != nil {
 		return "", err
 	}
 
-	ver, err := module.EscapeVersion(version)
+	ver, err := module.EscapeVersion(i.Version)
 	if err != nil {
 		return "", err
 	}

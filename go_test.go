@@ -177,7 +177,8 @@ replace golang.org/x/tools => somewhere.org/tools v0.1.0
 }
 
 func TestModCacheURL(t *testing.T) {
-	url, err := ModCacheURL("golang.org/x/sync", "v0.19.0")
+	im := Import{Base: "golang.org/x/sync", Version: "v0.19.0"}
+	url, err := im.ModCacheURL()
 	if err != nil {
 		t.Errorf("unexpected error: %s", err)
 	} else if url != "https://proxy.golang.org/golang.org/x/sync/@v/v0.19.0.zip" {
