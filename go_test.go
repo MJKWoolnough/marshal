@@ -194,13 +194,21 @@ go 1.25.5
 require (
 	golang.org/x/mod v0.31.0
 	golang.org/x/tools v0.40.0
+	vimagination.zapto.org/httpreaderat v1.0.0
 )
 
-require golang.org/x/sync v0.19.0 // indirect`,
+require golang.org/x/sync v0.19.0 // indirect
+
+replace golang.org/x/tools => somewhere.org/tools v0.1.0
+
+replace vimagination.zapto.org/httpreaderat v1.0.0 => ../httpreaderat`,
 	}
 
 	mod := Import{Base: "golang.org/x/mod", Version: "v0.31.0", Path: "."}
 	modFile := Import{Base: "golang.org/x/mod", Version: "v0.31.0", Path: "modfile"}
+	tools := Import{Base: "somewhere.org/tools", Version: "v0.1.0", Path: "."}
+	httpreaderat := Import{Base: "../httpreaderat", Path: "."}
+	httpreaderatsub := Import{Base: "../httpreaderat", Path: "sub"}
 
 	if pkg, err := ParseModFile(tfs); err != nil {
 		t.Errorf("unexpected error: %s", err)
@@ -210,5 +218,11 @@ require golang.org/x/sync v0.19.0 // indirect`,
 		t.Errorf("expecting import %v, got %v", mod, im)
 	} else if im = pkg.Resolve("golang.org/x/mod/modfile"); im != nil && *im != modFile {
 		t.Errorf("expecting import %v, got %v", modFile, im)
+	} else if im = pkg.Resolve("golang.org/x/tools"); im != nil && *im != tools {
+		t.Errorf("expecting import %v, got %v", tools, im)
+	} else if im = pkg.Resolve("vimagination.zapto.org/httpreaderat"); im != nil && *im != httpreaderat {
+		t.Errorf("expecting import %v, got %v", httpreaderat, im)
+	} else if im = pkg.Resolve("vimagination.zapto.org/httpreaderat/sub"); im != nil && *im != httpreaderatsub {
+		t.Errorf("expecting import %v, got %v", httpreaderatsub, im)
 	}
 }
