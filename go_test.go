@@ -175,3 +175,31 @@ func TestModCacheURL(t *testing.T) {
 		t.Errorf("expecting URL %q, got %q", "https://proxy.golang.org/golang.org/x/sync/@v/v0.19.0.zip", url)
 	}
 }
+
+func TestImportResolve(t *testing.T) {
+	tfs := testFS{
+		"go.mod": `module vimagination.zapto.org/marshal
+
+go 1.25.5
+
+require (
+	golang.org/x/mod v0.31.0
+	golang.org/x/tools v0.40.0
+)
+
+require golang.org/x/sync v0.19.0 // indirect`,
+	}
+
+	mod := Import{Base: "golang.org/x/mod", Version: "v0.31.0", Path: "."}
+	modFile := Import{Base: "golang.org/x/mod", Version: "v0.31.0", Path: "modfile"}
+
+	if pkg, err := ParseModFile(tfs); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if im := pkg.Resolve("unknown.com/pkg"); im != nil {
+		t.Errorf("expecting nil response, got %v", im)
+	} else if im = pkg.Resolve("golang.org/x/mod"); im != nil && *im != mod {
+		t.Errorf("expecting import %v, got %v", mod, im)
+	} else if im = pkg.Resolve("golang.org/x/mod/modfile"); im != nil && *im != modFile {
+		t.Errorf("expecting import %v, got %v", modFile, im)
+	}
+}
