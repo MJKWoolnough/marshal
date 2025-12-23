@@ -227,3 +227,28 @@ replace vimagination.zapto.org/httpreaderat v1.0.0 => ../httpreaderat`,
 		t.Errorf("expecting import %v, got %v", httpreaderatsub, im)
 	}
 }
+
+func TestAsFS(t *testing.T) {
+	modFile := Import{Base: "golang.org/x/mod", Version: "v0.31.0", Path: "modfile"}
+	cache := Import{Base: "vimagination.zapto.org/cache", Version: "v1.0.0", Path: "."}
+
+	if f, err := modFile.AsFS(); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if mf, err := ParseModFile(f); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if mf.Path != modFile.Base {
+		t.Errorf("expecting path %q, got %q", modFile.Base, mf.Path)
+	} else if _, ok := f.(*zipFS); ok {
+		t.Log("was expecting FS to be a os.DirFS")
+	}
+
+	if f, err := cache.AsFS(); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if mf, err := ParseModFile(f); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if mf.Path != cache.Base {
+		t.Errorf("expecting path %q, got %q", cache.Base, mf.Path)
+	} else if _, ok := f.(*zipFS); !ok {
+		t.Log("was expecting FS to be a zipFS")
+	}
+}
