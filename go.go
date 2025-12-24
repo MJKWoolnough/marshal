@@ -33,6 +33,15 @@ type dirEntry struct {
 	fs.DirEntry
 }
 
+func ParsePackage(fsys filesystem, path string) (*types.Package, error) {
+	m, err := parseModFile(fsys, path)
+	if err != nil {
+		return nil, err
+	}
+
+	return m.ParsePackage(fsys)
+}
+
 func listGoFiles(fsys filesystem) ([]string, error) {
 	ctx := build.Context{
 		GOARCH:   runtime.GOARCH,
