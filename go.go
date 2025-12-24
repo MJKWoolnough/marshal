@@ -165,6 +165,10 @@ type Import struct {
 }
 
 func (m *Module) Resolve(importURL string) *Import {
+	if strings.HasPrefix(importURL, m.Module+"/") {
+		return &Import{Base: m.Path, Version: "", Path: strings.TrimPrefix(strings.TrimPrefix(importURL, m.Module), "/")}
+	}
+
 	for url, mod := range m.Imports {
 		if url == importURL {
 			return &Import{Base: mod.Path, Version: mod.Version, Path: "."}
@@ -229,7 +233,7 @@ func (i *Import) AsFS() (filesystem, error) {
 
 	if s, err := os.Stat(local); err == nil {
 		if s.IsDir() {
-			return os.DirFS(local).(filesystem), nil
+			return os.DirFS(filepath.Join(local, i.Path)).(filesystem), nil
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return nil, err

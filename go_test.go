@@ -236,10 +236,10 @@ func TestAsFS(t *testing.T) {
 
 	if f, err := modFile.AsFS(); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if mf, err := ParseModFile(f, ""); err != nil {
+	} else if _, err := f.Open("print.go"); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if mf.Module != modFile.Base {
-		t.Errorf("expecting path %q, got %q", modFile.Base, mf.Module)
+	} else if _, err := f.Open("not-a-file.go"); err == nil {
+		t.Error("expecting error, got nil")
 	} else if _, ok := f.(*zipFS); ok {
 		t.Log("was expecting FS to be a os.DirFS")
 	}
