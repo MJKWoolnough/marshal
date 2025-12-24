@@ -139,30 +139,9 @@ func (m *moduleDetails) ParsePackage(fsys filesystem) (*types.Package, error) {
 		return nil, err
 	}
 
-	fset := token.NewFileSet()
-
-	var pkg string
-
-	parsedFiles := make([]*ast.File, len(files))
-
-	for n, file := range files {
-		f, err := fsys.Open(file)
-		if err != nil {
-			return nil, err
-		}
-
-		pf, err := parser.ParseFile(fset, file, f, parser.AllErrors|parser.ParseComments)
-		if err != nil {
-			return nil, err
-		}
-
-		if pkg == "" {
-			pkg = pf.Name.Name
-		} else if pkg != pf.Name.Name {
-			return nil, errors.New("multiple packages found")
-		}
-
-		parsedFiles[n] = pf
+	fset, parsedFiles, err := parseFiles(fsys, files)
+	if err != nil {
+		return nil, err
 	}
 
 	var (
@@ -176,6 +155,36 @@ func (m *moduleDetails) ParsePackage(fsys filesystem) (*types.Package, error) {
 	)
 
 	return conf.Check(".", fset, parsedFiles, &info)
+}
+
+func parseFiles(fsys filesystem, files []string) (*token.FileSet, []*ast.File, error) {
+	fset := token.NewFileSet()
+
+	var pkg string
+
+	parsedFiles := make([]*ast.File, len(files))
+
+	for n, file := range files {
+		f, err := fsys.Open(file)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		pf, err := parser.ParseFile(fset, file, f, parser.AllErrors|parser.ParseComments)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if pkg == "" {
+			pkg = pf.Name.Name
+		} else if pkg != pf.Name.Name {
+			return nil, nil, errors.New("multiple packages found")
+		}
+
+		parsedFiles[n] = pf
+	}
+
+	return fset, parsedFiles, nil
 }
 
 func (m *moduleDetails) Import(path string) (*types.Package, error) {
