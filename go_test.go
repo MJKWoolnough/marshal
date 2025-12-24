@@ -4,6 +4,8 @@ import (
 	"go/types"
 	"io"
 	"io/fs"
+	"os"
+	"reflect"
 	"runtime"
 	"slices"
 	"testing"
@@ -252,5 +254,28 @@ func TestAsFS(t *testing.T) {
 		t.Errorf("expecting path %q, got %q", cache.Base, mf.Module)
 	} else if _, ok := f.(*zipFS); !ok {
 		t.Log("was expecting FS to be a zipFS")
+	}
+}
+
+func TestTypes(t *testing.T) {
+	pkg, err := ParsePackage(os.DirFS(".").(filesystem), ".")
+	if err != nil {
+		t.Fatalf("unexpected error: %#v", err)
+	}
+
+	obj := pkg.Scope().Lookup("moduleDetails")
+	if obj == nil {
+		t.Fatal("expecting object, got nil")
+	}
+
+	str, ok := obj.Type().Underlying().(*types.Struct)
+	if !ok {
+		t.Fatal("expecting struct type")
+	}
+
+	typ := reflect.TypeOf(moduleDetails{})
+
+	if str.NumFields() != typ.NumField() {
+		t.Errorf("expecting %d fields, got %d", typ.NumField(), str.NumFields())
 	}
 }
