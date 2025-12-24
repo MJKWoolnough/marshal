@@ -125,7 +125,9 @@ func TestParsePackage(t *testing.T) {
 		"a.go": "package main\n\ntype A struct {B int}",
 	}
 
-	if pkg, err := ParsePackage(tfs); err != nil {
+	var m Module
+
+	if pkg, err := m.ParsePackage(tfs); err != nil {
 		t.Errorf("unexpected error: %s", err)
 	} else if a := pkg.Scope().Lookup("A"); a == nil {
 		t.Error("expected type def, got nil")
@@ -159,10 +161,10 @@ replace golang.org/x/tools => somewhere.org/tools v0.1.0
 `,
 	}
 
-	if pkg, err := ParseModFile(tfs); err != nil {
+	if pkg, err := ParseModFile(tfs, ""); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if pkg.Path != "vimagination.zapto.org/marshal" {
-		t.Errorf("expecting path %q, got %q", "vimagination.zapto.org/marshal", pkg.Path)
+	} else if pkg.Module != "vimagination.zapto.org/marshal" {
+		t.Errorf("expecting path %q, got %q", "vimagination.zapto.org/marshal", pkg.Module)
 	} else if len(pkg.Imports) != 3 {
 		t.Errorf("expecting 3 imports, got %d", len(pkg.Imports))
 	} else if m := pkg.Imports["golang.org/x/mod"]; m.Path != "golang.org/x/mod" {
@@ -211,7 +213,7 @@ replace vimagination.zapto.org/httpreaderat v1.0.0 => ../httpreaderat`,
 	httpreaderat := Import{Base: "../httpreaderat", Path: "."}
 	httpreaderatsub := Import{Base: "../httpreaderat", Path: "sub"}
 
-	if pkg, err := ParseModFile(tfs); err != nil {
+	if pkg, err := ParseModFile(tfs, ""); err != nil {
 		t.Errorf("unexpected error: %s", err)
 	} else if im := pkg.Resolve("unknown.com/pkg"); im != nil {
 		t.Errorf("expecting nil response, got %v", im)
@@ -234,20 +236,20 @@ func TestAsFS(t *testing.T) {
 
 	if f, err := modFile.AsFS(); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if mf, err := ParseModFile(f); err != nil {
+	} else if mf, err := ParseModFile(f, ""); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if mf.Path != modFile.Base {
-		t.Errorf("expecting path %q, got %q", modFile.Base, mf.Path)
+	} else if mf.Module != modFile.Base {
+		t.Errorf("expecting path %q, got %q", modFile.Base, mf.Module)
 	} else if _, ok := f.(*zipFS); ok {
 		t.Log("was expecting FS to be a os.DirFS")
 	}
 
 	if f, err := cache.AsFS(); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if mf, err := ParseModFile(f); err != nil {
+	} else if mf, err := ParseModFile(f, ""); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if mf.Path != cache.Base {
-		t.Errorf("expecting path %q, got %q", cache.Base, mf.Path)
+	} else if mf.Module != cache.Base {
+		t.Errorf("expecting path %q, got %q", cache.Base, mf.Module)
 	} else if _, ok := f.(*zipFS); !ok {
 		t.Log("was expecting FS to be a zipFS")
 	}

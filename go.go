@@ -82,7 +82,43 @@ func ListGoFiles(fsys filesystem) ([]string, error) {
 	return pkg.GoFiles, nil
 }
 
-func ParsePackage(fsys filesystem) (*types.Package, error) {
+type Module struct {
+	Module  string
+	Path    string
+	Imports map[string]module.Version
+}
+
+func ParseModFile(fsys filesystem, path string) (*Module, error) {
+	data, err := fsys.ReadFile("go.mod")
+	if err != nil {
+		return nil, err
+	}
+
+	f, err := modfile.Parse("go.mod", data, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	imports := make(map[string]module.Version, len(f.Require))
+
+	for _, r := range f.Require {
+		imports[r.Mod.Path] = r.Mod
+	}
+
+	for _, r := range f.Replace {
+		if m, ok := imports[r.Old.Path]; ok && (r.Old.Version == "" || r.Old.Version == m.Version) {
+			imports[r.Old.Path] = r.New
+		}
+	}
+
+	return &Module{
+		Module:  f.Module.Mod.Path,
+		Path:    path,
+		Imports: imports,
+	}, nil
+}
+
+func (m *Module) ParsePackage(fsys filesystem) (*types.Package, error) {
 	files, err := ListGoFiles(fsys)
 	if err != nil {
 		return nil, err
@@ -122,40 +158,6 @@ func ParsePackage(fsys filesystem) (*types.Package, error) {
 	)
 
 	return conf.Check(".", fset, parsedFiles, &info)
-}
-
-type Module struct {
-	Path    string
-	Imports map[string]module.Version
-}
-
-func ParseModFile(fsys filesystem) (*Module, error) {
-	data, err := fsys.ReadFile("go.mod")
-	if err != nil {
-		return nil, err
-	}
-
-	f, err := modfile.Parse("go.mod", data, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	imports := make(map[string]module.Version, len(f.Require))
-
-	for _, r := range f.Require {
-		imports[r.Mod.Path] = r.Mod
-	}
-
-	for _, r := range f.Replace {
-		if m, ok := imports[r.Old.Path]; ok && (r.Old.Version == "" || r.Old.Version == m.Version) {
-			imports[r.Old.Path] = r.New
-		}
-	}
-
-	return &Module{
-		Path:    f.Module.Mod.Path,
-		Imports: imports,
-	}, nil
 }
 
 type Import struct {
