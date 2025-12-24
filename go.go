@@ -93,10 +93,11 @@ func listGoFiles(fsys filesystem) ([]string, error) {
 }
 
 type moduleDetails struct {
-	Module  string
-	Path    string
-	Imports map[string]module.Version
-	cache   map[string]*types.Package
+	Module          string
+	Path            string
+	Imports         map[string]module.Version
+	defaultImporter types.Importer
+	cache           map[string]*types.Package
 }
 
 func parseModFile(fsys filesystem, path string) (*moduleDetails, error) {
@@ -126,7 +127,9 @@ func parseModFile(fsys filesystem, path string) (*moduleDetails, error) {
 		Module:  f.Module.Mod.Path,
 		Path:    path,
 		Imports: imports,
-		cache:   make(map[string]*types.Package),
+
+		defaultImporter: importer.Default(),
+		cache:           make(map[string]*types.Package),
 	}, nil
 }
 
@@ -164,7 +167,8 @@ func (m *moduleDetails) ParsePackage(fsys filesystem) (*types.Package, error) {
 
 	var (
 		conf = types.Config{
-			Importer: m,
+			GoVersion: runtime.Version(),
+			Importer:  m,
 		}
 		info = types.Info{
 			Types: make(map[ast.Expr]types.TypeAndValue),
@@ -192,7 +196,7 @@ func (m *moduleDetails) Import(path string) (*types.Package, error) {
 func (m *moduleDetails) importPath(path string) (*types.Package, error) {
 	im := m.Resolve(path)
 	if im == nil {
-		return importer.Default().Import(path)
+		return m.defaultImporter.Import(path)
 	}
 
 	fs, err := im.AsFS()
