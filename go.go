@@ -5,6 +5,7 @@ import (
 	"errors"
 	"go/ast"
 	"go/build"
+	"go/importer"
 	"go/parser"
 	"go/token"
 	"go/types"
@@ -86,6 +87,7 @@ type Module struct {
 	Module  string
 	Path    string
 	Imports map[string]module.Version
+	cache   map[string]*types.Package
 }
 
 func ParseModFile(fsys filesystem, path string) (*Module, error) {
@@ -115,6 +117,7 @@ func ParseModFile(fsys filesystem, path string) (*Module, error) {
 		Module:  f.Module.Mod.Path,
 		Path:    path,
 		Imports: imports,
+		cache:   make(map[string]*types.Package),
 	}, nil
 }
 
@@ -151,13 +154,44 @@ func (m *Module) ParsePackage(fsys filesystem) (*types.Package, error) {
 	}
 
 	var (
-		conf types.Config
+		conf = types.Config{
+			Importer: m,
+		}
 		info = types.Info{
 			Types: make(map[ast.Expr]types.TypeAndValue),
 		}
 	)
 
 	return conf.Check(".", fset, parsedFiles, &info)
+}
+
+func (m *Module) Import(path string) (*types.Package, error) {
+	if pkg, ok := m.cache[path]; ok {
+		return pkg, nil
+	}
+
+	pkg, err := m.importPath(path)
+	if err != nil {
+		return nil, err
+	}
+
+	m.cache[path] = pkg
+
+	return pkg, nil
+}
+
+func (m *Module) importPath(path string) (*types.Package, error) {
+	im := m.Resolve(path)
+	if im == nil {
+		return importer.Default().Import(path)
+	}
+
+	fs, err := im.AsFS()
+	if err != nil {
+		return nil, err
+	}
+
+	return m.ParsePackage(fs)
 }
 
 type Import struct {
