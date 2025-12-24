@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"go/types"
 	"os"
-
-	"golang.org/x/tools/go/packages"
 )
 
 func main() {
@@ -30,12 +28,12 @@ func run() error {
 }
 
 func processType(module, typename string) error {
-	pkgs, err := packages.Load(&packages.Config{Mode: packages.LoadTypes}, module)
+	pkg, err := ParsePackage(os.DirFS(module).(filesystem), module)
 	if err != nil {
 		return err
 	}
 
-	typ := pkgs[0].Types.Scope().Lookup(typename)
+	typ := pkg.Scope().Lookup(typename)
 	if typ == nil {
 		return ErrNotFound
 	}
