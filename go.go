@@ -33,7 +33,7 @@ type dirEntry struct {
 	fs.DirEntry
 }
 
-func ListGoFiles(fsys filesystem) ([]string, error) {
+func listGoFiles(fsys filesystem) ([]string, error) {
 	ctx := build.Context{
 		GOARCH:   runtime.GOARCH,
 		GOOS:     runtime.GOOS,
@@ -83,14 +83,14 @@ func ListGoFiles(fsys filesystem) ([]string, error) {
 	return pkg.GoFiles, nil
 }
 
-type Module struct {
+type moduleDetails struct {
 	Module  string
 	Path    string
 	Imports map[string]module.Version
 	cache   map[string]*types.Package
 }
 
-func ParseModFile(fsys filesystem, path string) (*Module, error) {
+func parseModFile(fsys filesystem, path string) (*moduleDetails, error) {
 	data, err := fsys.ReadFile("go.mod")
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func ParseModFile(fsys filesystem, path string) (*Module, error) {
 		}
 	}
 
-	return &Module{
+	return &moduleDetails{
 		Module:  f.Module.Mod.Path,
 		Path:    path,
 		Imports: imports,
@@ -121,8 +121,8 @@ func ParseModFile(fsys filesystem, path string) (*Module, error) {
 	}, nil
 }
 
-func (m *Module) ParsePackage(fsys filesystem) (*types.Package, error) {
-	files, err := ListGoFiles(fsys)
+func (m *moduleDetails) ParsePackage(fsys filesystem) (*types.Package, error) {
+	files, err := listGoFiles(fsys)
 	if err != nil {
 		return nil, err
 	}
@@ -165,7 +165,7 @@ func (m *Module) ParsePackage(fsys filesystem) (*types.Package, error) {
 	return conf.Check(".", fset, parsedFiles, &info)
 }
 
-func (m *Module) Import(path string) (*types.Package, error) {
+func (m *moduleDetails) Import(path string) (*types.Package, error) {
 	if pkg, ok := m.cache[path]; ok {
 		return pkg, nil
 	}
@@ -180,7 +180,7 @@ func (m *Module) Import(path string) (*types.Package, error) {
 	return pkg, nil
 }
 
-func (m *Module) importPath(path string) (*types.Package, error) {
+func (m *moduleDetails) importPath(path string) (*types.Package, error) {
 	im := m.Resolve(path)
 	if im == nil {
 		return importer.Default().Import(path)
@@ -194,23 +194,23 @@ func (m *Module) importPath(path string) (*types.Package, error) {
 	return m.ParsePackage(fs)
 }
 
-type Import struct {
+type importDetails struct {
 	Base, Version, Path string
 }
 
-func (m *Module) Resolve(importURL string) *Import {
+func (m *moduleDetails) Resolve(importURL string) *importDetails {
 	if strings.HasPrefix(importURL, m.Module+"/") {
-		return &Import{Base: m.Path, Version: "", Path: strings.TrimPrefix(strings.TrimPrefix(importURL, m.Module), "/")}
+		return &importDetails{Base: m.Path, Version: "", Path: strings.TrimPrefix(strings.TrimPrefix(importURL, m.Module), "/")}
 	}
 
 	for url, mod := range m.Imports {
 		if url == importURL {
-			return &Import{Base: mod.Path, Version: mod.Version, Path: "."}
+			return &importDetails{Base: mod.Path, Version: mod.Version, Path: "."}
 		} else if strings.HasPrefix(importURL, url) {
 			base := strings.TrimPrefix(importURL, url)
 
 			if strings.HasPrefix(base, "/") {
-				return &Import{Base: mod.Path, Version: mod.Version, Path: strings.TrimPrefix(base, "/")}
+				return &importDetails{Base: mod.Path, Version: mod.Version, Path: strings.TrimPrefix(base, "/")}
 			}
 		}
 	}
@@ -218,7 +218,7 @@ func (m *Module) Resolve(importURL string) *Import {
 	return nil
 }
 
-func (i *Import) CachedModPath() (string, error) {
+func (i *importDetails) CachedModPath() (string, error) {
 	if modfile.IsDirectoryPath(i.Base) {
 		return i.Base, nil
 	}
@@ -231,7 +231,7 @@ func (i *Import) CachedModPath() (string, error) {
 	return filepath.Join(build.Default.GOPATH, "pkg", "mod", dir), nil
 }
 
-func (i *Import) ModCacheURL() (string, error) {
+func (i *importDetails) ModCacheURL() (string, error) {
 	p, err := module.EscapePath(i.Base)
 	if err != nil {
 		return "", err
@@ -245,7 +245,7 @@ func (i *Import) ModCacheURL() (string, error) {
 	return "https://proxy.golang.org" + path.Join("/", p, "@v", ver+".zip"), nil
 }
 
-func (i *Import) Dir() (string, error) {
+func (i *importDetails) Dir() (string, error) {
 	path, err := module.EscapePath(i.Base)
 	if err != nil {
 		return "", err
@@ -259,7 +259,7 @@ func (i *Import) Dir() (string, error) {
 	return path + "@" + ver, nil
 }
 
-func (i *Import) AsFS() (filesystem, error) {
+func (i *importDetails) AsFS() (filesystem, error) {
 	local, err := i.CachedModPath()
 	if err != nil {
 		return nil, err
