@@ -295,6 +295,10 @@ func (i *importDetails) AsFS() (filesystem, error) {
 		return nil, err
 	}
 
+	return i.remotePackageFS()
+}
+
+func (i *importDetails) remotePackageFS() (filesystem, error) {
 	remote, err := i.ModCacheURL()
 	if err != nil {
 		return nil, err
