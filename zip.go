@@ -48,7 +48,15 @@ func (z *zipFS) ReadFile(name string) ([]byte, error) {
 		return nil, err
 	}
 
-	return io.ReadAll(f)
+	s, _ := f.Stat()
+
+	buf := make([]byte, s.Size())
+
+	if _, err := io.ReadFull(f, buf); err != nil {
+		return nil, err
+	}
+
+	return buf, nil
 }
 
 func (z *zipFS) IsDir(path string) bool {
