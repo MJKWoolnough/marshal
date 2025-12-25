@@ -29,10 +29,6 @@ type filesystem interface {
 	ReadFile(name string) ([]byte, error)
 }
 
-type dirEntry struct {
-	fs.DirEntry
-}
-
 func ParsePackage(fsys filesystem, path string) (*types.Package, error) {
 	m, err := parseModFile(fsys, path)
 	if err != nil {
