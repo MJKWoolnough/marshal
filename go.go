@@ -179,7 +179,7 @@ func (m *moduleDetails) parseFiles(pkgPath string, fsys filesystem, files []stri
 		if pkg == "" {
 			pkg = pf.Name.Name
 		} else if pkg != pf.Name.Name {
-			return nil, errors.New("multiple packages found")
+			return nil, errMultiplePackages
 		}
 
 		parsedFiles[n] = pf
@@ -322,3 +322,5 @@ func (i *importDetails) remotePackageFS() (filesystem, error) {
 
 	return &zipFS{z, dir}, nil
 }
+
+var errMultiplePackages = errors.New("multiple packages found")
