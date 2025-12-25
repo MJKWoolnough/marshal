@@ -42,46 +42,59 @@ func ParsePackage(fsys filesystem, path string) (*types.Package, error) {
 	return m.ParsePackage(m.Module, fsys)
 }
 
+type contextFS struct {
+	fsys filesystem
+}
+
+func (c *contextFS) IsDir(path string) bool {
+	s, err := c.fsys.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return s.IsDir()
+}
+
+func (c *contextFS) ReadDir(dir string) ([]fs.FileInfo, error) {
+	entries, err := c.fsys.ReadDir(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	fis := make([]fs.FileInfo, len(entries))
+
+	for n, entry := range entries {
+		fis[n], err = entry.Info()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return fis, nil
+}
+
+func (c *contextFS) OpenFile(path string) (io.ReadCloser, error) {
+	return c.fsys.Open(path)
+}
+
+func hasSubdir(root, dir string) (string, bool) {
+	if strings.HasPrefix(dir, root) {
+		return strings.TrimPrefix(dir, root), true
+	}
+
+	return "", false
+}
+
 func listGoFiles(fsys filesystem) ([]string, error) {
+	cfs := contextFS{fsys}
 	ctx := build.Context{
-		GOARCH:   runtime.GOARCH,
-		GOOS:     runtime.GOOS,
-		Compiler: runtime.Compiler,
-		IsDir: func(path string) bool {
-			s, err := fsys.Stat(path)
-			if err != nil {
-				return false
-			}
-
-			return s.IsDir()
-		},
-		HasSubdir: func(root, dir string) (string, bool) {
-			if strings.HasPrefix(dir, root) {
-				return strings.TrimPrefix(dir, root), true
-			}
-
-			return "", false
-		},
-		ReadDir: func(dir string) ([]fs.FileInfo, error) {
-			entries, err := fsys.ReadDir(dir)
-			if err != nil {
-				return nil, err
-			}
-
-			fis := make([]fs.FileInfo, len(entries))
-
-			for n, entry := range entries {
-				fis[n], err = entry.Info()
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			return fis, nil
-		},
-		OpenFile: func(path string) (io.ReadCloser, error) {
-			return fsys.Open(path)
-		},
+		GOARCH:    runtime.GOARCH,
+		GOOS:      runtime.GOOS,
+		Compiler:  runtime.Compiler,
+		IsDir:     cfs.IsDir,
+		HasSubdir: hasSubdir,
+		ReadDir:   cfs.ReadDir,
+		OpenFile:  cfs.OpenFile,
 	}
 
 	pkg, err := ctx.ImportDir(".", 0)
