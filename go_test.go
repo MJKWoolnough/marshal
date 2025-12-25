@@ -1,6 +1,7 @@
 package main
 
 import (
+	"go/token"
 	"go/types"
 	"io"
 	"io/fs"
@@ -127,9 +128,9 @@ func TestParsePackage(t *testing.T) {
 		"a.go": "package main\n\ntype A struct {B int}",
 	}
 
-	var m moduleDetails
+	m := moduleDetails{fset: token.NewFileSet()}
 
-	if pkg, err := m.ParsePackage(tfs); err != nil {
+	if pkg, err := m.ParsePackage("", tfs); err != nil {
 		t.Errorf("unexpected error: %s", err)
 	} else if a := pkg.Scope().Lookup("A"); a == nil {
 		t.Error("expected type def, got nil")

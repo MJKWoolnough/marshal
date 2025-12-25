@@ -39,7 +39,7 @@ func ParsePackage(fsys filesystem, path string) (*types.Package, error) {
 		return nil, err
 	}
 
-	return m.ParsePackage(fsys)
+	return m.ParsePackage(m.Module, fsys)
 }
 
 func listGoFiles(fsys filesystem) ([]string, error) {
@@ -96,6 +96,7 @@ type moduleDetails struct {
 	Module          string
 	Path            string
 	Imports         map[string]module.Version
+	fset            *token.FileSet
 	defaultImporter types.Importer
 	cache           map[string]*types.Package
 }
@@ -123,23 +124,25 @@ func parseModFile(fsys filesystem, path string) (*moduleDetails, error) {
 		}
 	}
 
-	return &moduleDetails{
-		Module:  f.Module.Mod.Path,
-		Path:    path,
-		Imports: imports,
+	fset := token.NewFileSet()
 
-		defaultImporter: importer.Default(),
+	return &moduleDetails{
+		Module:          f.Module.Mod.Path,
+		Path:            path,
+		Imports:         imports,
+		fset:            fset,
+		defaultImporter: importer.ForCompiler(fset, runtime.Compiler, nil),
 		cache:           make(map[string]*types.Package),
 	}, nil
 }
 
-func (m *moduleDetails) ParsePackage(fsys filesystem) (*types.Package, error) {
+func (m *moduleDetails) ParsePackage(pkgPath string, fsys filesystem) (*types.Package, error) {
 	files, err := listGoFiles(fsys)
 	if err != nil {
 		return nil, err
 	}
 
-	fset, parsedFiles, err := parseFiles(fsys, files)
+	parsedFiles, err := m.parseFiles(pkgPath, fsys, files)
 	if err != nil {
 		return nil, err
 	}
@@ -154,12 +157,10 @@ func (m *moduleDetails) ParsePackage(fsys filesystem) (*types.Package, error) {
 		}
 	)
 
-	return conf.Check(".", fset, parsedFiles, &info)
+	return conf.Check(".", m.fset, parsedFiles, &info)
 }
 
-func parseFiles(fsys filesystem, files []string) (*token.FileSet, []*ast.File, error) {
-	fset := token.NewFileSet()
-
+func (m *moduleDetails) parseFiles(pkgPath string, fsys filesystem, files []string) ([]*ast.File, error) {
 	var pkg string
 
 	parsedFiles := make([]*ast.File, len(files))
@@ -167,24 +168,24 @@ func parseFiles(fsys filesystem, files []string) (*token.FileSet, []*ast.File, e
 	for n, file := range files {
 		f, err := fsys.Open(file)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
-		pf, err := parser.ParseFile(fset, file, f, parser.AllErrors|parser.ParseComments)
+		pf, err := parser.ParseFile(m.fset, path.Join(pkgPath, file), f, parser.AllErrors|parser.ParseComments)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 
 		if pkg == "" {
 			pkg = pf.Name.Name
 		} else if pkg != pf.Name.Name {
-			return nil, nil, errors.New("multiple packages found")
+			return nil, errors.New("multiple packages found")
 		}
 
 		parsedFiles[n] = pf
 	}
 
-	return fset, parsedFiles, nil
+	return parsedFiles, nil
 }
 
 func (m *moduleDetails) Import(path string) (*types.Package, error) {
@@ -213,7 +214,7 @@ func (m *moduleDetails) importPath(path string) (*types.Package, error) {
 		return nil, err
 	}
 
-	return m.ParsePackage(fs)
+	return m.ParsePackage(path, fs)
 }
 
 type importDetails struct {
