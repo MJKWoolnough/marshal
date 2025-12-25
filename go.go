@@ -23,10 +23,10 @@ import (
 )
 
 type filesystem interface {
-	fs.FS
-	fs.StatFS
-	fs.ReadDirFS
-	fs.ReadFileFS
+	OpenFile(string) (io.ReadCloser, error)
+	IsDir(string) bool
+	ReadDir(string) ([]fs.FileInfo, error)
+	ReadFile(name string) ([]byte, error)
 }
 
 type dirEntry struct {
@@ -42,41 +42,6 @@ func ParsePackage(fsys filesystem, path string) (*types.Package, error) {
 	return m.ParsePackage(m.Module, fsys)
 }
 
-type contextFS struct {
-	fsys filesystem
-}
-
-func (c *contextFS) IsDir(path string) bool {
-	s, err := c.fsys.Stat(path)
-	if err != nil {
-		return false
-	}
-
-	return s.IsDir()
-}
-
-func (c *contextFS) ReadDir(dir string) ([]fs.FileInfo, error) {
-	entries, err := c.fsys.ReadDir(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	fis := make([]fs.FileInfo, len(entries))
-
-	for n, entry := range entries {
-		fis[n], err = entry.Info()
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return fis, nil
-}
-
-func (c *contextFS) OpenFile(path string) (io.ReadCloser, error) {
-	return c.fsys.Open(path)
-}
-
 func hasSubdir(root, dir string) (string, bool) {
 	if strings.HasPrefix(dir, root) {
 		return strings.TrimPrefix(dir, root), true
@@ -86,15 +51,14 @@ func hasSubdir(root, dir string) (string, bool) {
 }
 
 func listGoFiles(fsys filesystem) ([]string, error) {
-	cfs := contextFS{fsys}
 	ctx := build.Context{
 		GOARCH:    runtime.GOARCH,
 		GOOS:      runtime.GOOS,
 		Compiler:  runtime.Compiler,
-		IsDir:     cfs.IsDir,
+		IsDir:     fsys.IsDir,
 		HasSubdir: hasSubdir,
-		ReadDir:   cfs.ReadDir,
-		OpenFile:  cfs.OpenFile,
+		ReadDir:   fsys.ReadDir,
+		OpenFile:  fsys.OpenFile,
 	}
 
 	pkg, err := ctx.ImportDir(".", 0)
@@ -179,7 +143,7 @@ func (m *moduleDetails) parseFiles(pkgPath string, fsys filesystem, files []stri
 	parsedFiles := make([]*ast.File, len(files))
 
 	for n, file := range files {
-		f, err := fsys.Open(file)
+		f, err := fsys.OpenFile(file)
 		if err != nil {
 			return nil, err
 		}
@@ -303,7 +267,7 @@ func (i *importDetails) AsFS() (filesystem, error) {
 
 	if s, err := os.Stat(local); err == nil {
 		if s.IsDir() {
-			return os.DirFS(filepath.Join(local, i.Path)).(filesystem), nil
+			return &osFS{os.DirFS(filepath.Join(local, i.Path)).(statReadDirFileFS)}, nil
 		}
 	} else if !errors.Is(err, fs.ErrNotExist) {
 		return nil, err
@@ -334,6 +298,38 @@ func (i *importDetails) remotePackageFS() (filesystem, error) {
 	}
 
 	return &zipFS{z, dir}, nil
+}
+
+type statReadDirFileFS interface {
+	fs.StatFS
+	fs.ReadDirFS
+	fs.ReadFileFS
+}
+
+type osFS struct {
+	statReadDirFileFS
+}
+
+func (o *osFS) OpenFile(path string) (io.ReadCloser, error) {
+	return o.Open(path)
+}
+
+func (o *osFS) IsDir(path string) bool {
+	s, err := o.Stat(path)
+	if err != nil {
+		return false
+	}
+
+	return s.IsDir()
+}
+
+func (o *osFS) ReadDir(path string) ([]fs.FileInfo, error) {
+	f, err := o.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	return f.(*os.File).Readdir(-1)
 }
 
 var errMultiplePackages = errors.New("multiple packages found")

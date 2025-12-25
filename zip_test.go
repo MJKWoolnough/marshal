@@ -45,18 +45,10 @@ func TestZipFS(t *testing.T) {
 		t.Errorf("expecting entry name %q, got %q", "b.txt", n)
 	}
 
-	if stat, err := z.Stat("not-a-file"); !errors.Is(err, fs.ErrNotExist) {
-		t.Errorf("expecting error ErrNotExist, got %v", err)
-	} else if stat != nil {
-		t.Errorf("expecting nil stat, got %v", stat)
-	} else if stat, err = z.Stat("package/"); err != nil {
-		t.Errorf("expecting nil error, got %s", err)
-	} else if !stat.IsDir() {
-		t.Error("expecting IsDir() to be true")
-	} else if stat, err = z.Stat("package/a.txt"); err != nil {
-		t.Errorf("expecting nil error, got %s", err)
-	} else if size := stat.Size(); size != 5 {
-		t.Errorf("expecting size 5, got %d", size)
+	if id := z.IsDir("not-a-file"); id {
+		t.Errorf("expecting IsDir = false, got %v", id)
+	} else if id = z.IsDir("package/"); !id {
+		t.Errorf("expecting IsDir = true, got %v", id)
 	}
 
 	if data, err := z.ReadFile("not-a-file"); !errors.Is(err, fs.ErrNotExist) {

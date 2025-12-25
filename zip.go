@@ -6,33 +6,44 @@ import (
 	"io/fs"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 type zipFS struct {
-	zip  *zip.Reader
+	*zip.Reader
 	base string
 }
 
-func (z *zipFS) Open(name string) (fs.File, error) {
-	return z.zip.Open(filepath.Join(z.base, name))
+func (z *zipFS) OpenFile(name string) (io.ReadCloser, error) {
+	return z.Open(filepath.Join(z.base, name))
 }
 
-func (z *zipFS) ReadDir(name string) ([]fs.DirEntry, error) {
-	f, err := z.Open(name)
+func (z *zipFS) ReadDir(name string) ([]fs.FileInfo, error) {
+	f, err := z.Open(filepath.Join(z.base, name))
 	if err != nil {
 		return nil, err
 	}
 
-	if d, ok := f.(fs.ReadDirFile); ok {
-		return d.ReadDir(-1)
+	d, ok := f.(fs.ReadDirFile)
+	if !ok {
+		return nil, fs.ErrInvalid
 	}
 
-	return nil, fs.ErrInvalid
+	entries, err := d.ReadDir(-1)
+	if err != nil {
+		return nil, err
+	}
+
+	fis := make([]fs.FileInfo, len(entries))
+
+	for n, entry := range entries {
+		fis[n] = entry.(fs.FileInfo)
+	}
+
+	return fis, nil
 }
 
 func (z *zipFS) ReadFile(name string) ([]byte, error) {
-	f, err := z.Open(name)
+	f, err := z.Open(filepath.Join(z.base, name))
 	if err != nil {
 		return nil, err
 	}
@@ -40,16 +51,7 @@ func (z *zipFS) ReadFile(name string) ([]byte, error) {
 	return io.ReadAll(f)
 }
 
-type zipDir string
-
-func (z zipDir) Name() string     { return filepath.Base(string(z)) }
-func (zipDir) Size() int64        { return 0 }
-func (zipDir) Mode() fs.FileMode  { return fs.ModeDir | fs.ModePerm }
-func (zipDir) ModTime() time.Time { return time.Now() }
-func (zipDir) IsDir() bool        { return true }
-func (z zipDir) Sys() any         { return z }
-
-func (z *zipFS) Stat(path string) (fs.FileInfo, error) {
+func (z *zipFS) IsDir(path string) bool {
 	path = filepath.Join(z.base, path)
 	pathWithSlash := path
 
@@ -57,13 +59,13 @@ func (z *zipFS) Stat(path string) (fs.FileInfo, error) {
 		pathWithSlash += "/"
 	}
 
-	for _, f := range z.zip.File {
+	for _, f := range z.File {
 		if f.Name == path {
-			return f.FileInfo(), nil
+			return false
 		} else if strings.HasPrefix(f.Name, pathWithSlash) {
-			return zipDir(path), nil
+			return true
 		}
 	}
 
-	return nil, fs.ErrNotExist
+	return false
 }

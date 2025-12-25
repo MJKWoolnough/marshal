@@ -10,77 +10,40 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
 
-type testFile struct {
-	name, contents string
-}
+type testFile string
 
-func (t *testFile) Stat() (fs.FileInfo, error) { return t, nil }
-
-func (t *testFile) Read(p []byte) (int, error) {
-	n := copy(p, t.contents)
-
-	t.contents = t.contents[n:]
-
-	if n == 0 {
-		return 0, io.EOF
-	}
-
-	return n, nil
-}
-
-func (t testFile) Close() error { return nil }
-
-func (t testFile) Name() string                { return t.name }
-func (t testFile) Size() int64                 { return int64(len(t.contents)) }
-func (t testFile) Mode() fs.FileMode           { return fs.ModeType }
-func (t testFile) ModTime() time.Time          { return time.Now() }
-func (t testFile) IsDir() bool                 { return false }
-func (t *testFile) Sys() any                   { return t }
-func (t *testFile) Type() fs.FileMode          { return fs.ModeType }
-func (t *testFile) Info() (fs.FileInfo, error) { return t, nil }
-
-type testDir string
-
-func (t testDir) Name() string       { return string(t) }
-func (t testDir) Size() int64        { return 0 }
-func (t testDir) Mode() fs.FileMode  { return fs.ModeDir }
-func (t testDir) ModTime() time.Time { return time.Now() }
-func (t testDir) IsDir() bool        { return true }
-func (t testDir) Sys() any           { return t }
+func (t testFile) Name() string       { return string(t) }
+func (t testFile) Size() int64        { return -1 }
+func (t testFile) Mode() fs.FileMode  { return fs.ModeType }
+func (t testFile) ModTime() time.Time { return time.Now() }
+func (t testFile) IsDir() bool        { return false }
+func (t testFile) Sys() any           { return t }
 
 type testFS map[string]string
 
-func (t testFS) Open(name string) (fs.File, error) {
+func (t testFS) OpenFile(name string) (io.ReadCloser, error) {
 	contents, ok := t[name]
 	if !ok {
 		return nil, fs.ErrNotExist
 	}
 
-	return &testFile{name: name, contents: contents}, nil
+	return io.NopCloser(strings.NewReader(contents)), nil
 }
 
-func (t testFS) Stat(name string) (fs.FileInfo, error) {
-	if name == "." {
-		return testDir("."), nil
-	}
-
-	contents, ok := t[name]
-	if !ok {
-		return nil, fs.ErrNotExist
-	}
-
-	return &testFile{name: name, contents: contents}, nil
+func (t testFS) IsDir(name string) bool {
+	return name == "."
 }
 
-func (t testFS) ReadDir(dir string) ([]fs.DirEntry, error) {
-	entries := make([]fs.DirEntry, 0, len(t))
+func (t testFS) ReadDir(dir string) ([]fs.FileInfo, error) {
+	entries := make([]fs.FileInfo, 0, len(t))
 
-	for name, contents := range t {
-		entries = append(entries, &testFile{name: name, contents: contents})
+	for name := range t {
+		entries = append(entries, testFile(name))
 	}
 
 	return entries, nil
@@ -260,9 +223,9 @@ func TestAsFS(t *testing.T) {
 
 	if f, err := modFile.AsFS(); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if _, err := f.Open("print.go"); err != nil {
+	} else if _, err := f.OpenFile("print.go"); err != nil {
 		t.Errorf("unexpected error: %s", err)
-	} else if _, err := f.Open("not-a-file.go"); err == nil {
+	} else if _, err := f.OpenFile("not-a-file.go"); err == nil {
 		t.Error("expecting error, got nil")
 	} else if _, ok := f.(*zipFS); ok {
 		t.Log("was expecting FS to be a os.DirFS")
@@ -280,7 +243,7 @@ func TestAsFS(t *testing.T) {
 }
 
 func TestTypes(t *testing.T) {
-	pkg, err := ParsePackage(os.DirFS(".").(filesystem), ".")
+	pkg, err := ParsePackage(&osFS{os.DirFS(".").(statReadDirFileFS)}, ".")
 	if err != nil {
 		t.Fatalf("unexpected error: %#v", err)
 	}
