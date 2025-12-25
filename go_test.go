@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"go/token"
 	"go/types"
 	"io"
@@ -144,6 +145,26 @@ func TestParsePackage(t *testing.T) {
 		t.Error("expected basic type")
 	} else if b.Kind() != types.Int {
 		t.Errorf("expected type %d, got %v", types.Int, b.Kind())
+	}
+}
+
+func TestParseFiles(t *testing.T) {
+	tfs := testFS{
+		"a.go": "package main\n\ntype A struct {B int}",
+		"b.go": "package pkg\n\ntype D struct {E int}",
+		"c.go": "package pkg\n\ntype F struct {G int}",
+	}
+
+	m := moduleDetails{fset: token.NewFileSet()}
+
+	if files, err := m.parseFiles(".", tfs, []string{"a.go", "b.go", "c.go"}); !errors.Is(err, errMultiplePackages) {
+		t.Errorf("expecting error errMultiplePackages, got %v", err)
+	} else if files != nil {
+		t.Errorf("expecting nil files, got %v", files)
+	} else if files, err = m.parseFiles(".", tfs, []string{"b.go", "c.go"}); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if len(files) != 2 {
+		t.Errorf("expecting 2 files, got %d", len(files))
 	}
 }
 
