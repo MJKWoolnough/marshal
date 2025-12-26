@@ -42,23 +42,23 @@ func run() error {
 func processType(typ types.Type) Type {
 	switch t := typ.Underlying().(type) {
 	case *types.Struct:
-		return forStruct(t)
+		return toStruct(t)
 	case *types.Array:
-		return forArray(t)
+		return toArray(t)
 	case *types.Slice:
-		return forSlice(t)
+		return toSlice(t)
 	case *types.Map:
-		return forMap(t)
+		return toMap(t)
 	case *types.Pointer:
-		return forPointer(t)
+		return toPointer(t)
 	case *types.Basic:
-		return forBasic(t)
+		return toBasic(t)
 	}
 
 	return nil
 }
 
-func forStruct(t *types.Struct) Type {
+func toStruct(t *types.Struct) Type {
 	var s Struct
 
 	for field := range t.NumFields() {
@@ -72,33 +72,33 @@ func forStruct(t *types.Struct) Type {
 	return s
 }
 
-func forArray(t *types.Array) Type {
+func toArray(t *types.Array) Type {
 	return Array{
 		Length:  t.Len(),
 		Element: processType(t.Elem()),
 	}
 }
 
-func forSlice(t *types.Slice) Type {
+func toSlice(t *types.Slice) Type {
 	return Slice{
 		Element: processType(t.Elem()),
 	}
 }
 
-func forMap(t *types.Map) Type {
+func toMap(t *types.Map) Type {
 	return Map{
 		Key:   processType(t.Key()),
 		Value: processType(t.Elem()),
 	}
 }
 
-func forPointer(t *types.Pointer) Type {
+func toPointer(t *types.Pointer) Type {
 	return Pointer{
 		Element: processType(t.Elem()),
 	}
 }
 
-func forBasic(t *types.Basic) Type {
+func toBasic(t *types.Basic) Type {
 	switch t.Kind() {
 	case types.Bool:
 		return Bool{}
