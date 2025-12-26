@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"slices"
@@ -243,7 +244,7 @@ func TestAsFS(t *testing.T) {
 }
 
 func TestTypes(t *testing.T) {
-	pkg, err := ParsePackage(&osFS{os.DirFS(".").(statReadDirFileFS)}, ".")
+	pkg, err := ParsePackage(".")
 	if err != nil {
 		t.Fatalf("unexpected error: %#v", err)
 	}
@@ -262,5 +263,31 @@ func TestTypes(t *testing.T) {
 
 	if str.NumFields() != typ.NumField() {
 		t.Errorf("expecting %d fields, got %d", typ.NumField(), str.NumFields())
+	}
+
+	dir := t.TempDir()
+
+	if err := os.MkdirAll(filepath.Join(dir, "sub"), 0700); err != nil {
+		t.Fatalf("unexpected error: %#v", err)
+	}
+
+	if err := os.WriteFile(filepath.Join(dir, "sub", "a.go"), []byte("package subpkg\n\ntype A struct{\n\tB int\n}"), 0600); err != nil {
+		t.Fatalf("unexpected error: %#v", err)
+	}
+
+	if _, err := ParsePackage(filepath.Join(dir, "sub")); !errors.Is(err, errNoModFile) {
+		t.Errorf("expecting error %q, got: %v", errNoModFile, err)
+	}
+
+	if err := os.WriteFile(filepath.Join(dir, "go.mod"), []byte("module vimagination.zapto.org/somepkg\n\ngo 1.25.5"), 0600); err != nil {
+		t.Fatalf("unexpected error: %#v", err)
+	}
+
+	if pkg, err := ParsePackage(filepath.Join(dir, "sub")); err != nil {
+		t.Errorf("unexpected error: %#v", err)
+	} else if name := pkg.Name(); name != "subpkg" {
+		t.Errorf("expecting package name %q, got %q", "subpkg", name)
+	} else if obj = pkg.Scope().Lookup("A"); obj == nil {
+		t.Errorf("expecting object, got nil")
 	}
 }
