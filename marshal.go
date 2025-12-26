@@ -49,6 +49,8 @@ func processType(typ types.Type) Type {
 		return forSlice(t)
 	case *types.Map:
 		return forMap(t)
+	case *types.Pointer:
+		return forPointer(t)
 	}
 
 	return nil
@@ -85,6 +87,12 @@ func forMap(t *types.Map) Type {
 	return Map{
 		Key:   processType(t.Key()),
 		Value: processType(t.Elem()),
+	}
+}
+
+func forPointer(t *types.Pointer) Type {
+	return Pointer{
+		Element: processType(t.Elem()),
 	}
 }
 
