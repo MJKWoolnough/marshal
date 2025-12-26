@@ -34,13 +34,13 @@ func run() error {
 		return ErrNotFound
 	}
 
-	processType(typ)
+	processType(typ.Type())
 
 	return nil
 }
 
-func processType(typ types.Object) Type {
-	switch t := typ.Type().Underlying().(type) {
+func processType(typ types.Type) Type {
+	switch t := typ.Underlying().(type) {
 	case *types.Struct:
 		return forStruct(t)
 	case *types.Array:
@@ -60,7 +60,7 @@ func forStruct(t *types.Struct) Type {
 	for field := range t.NumFields() {
 		s.Fields = append(s.Fields, Field{
 			Name: t.Field(field).Name(),
-			Type: processType(t.Field(field)),
+			Type: processType(t.Field(field).Type()),
 			Tag:  t.Tag(field),
 		})
 	}
@@ -68,15 +68,18 @@ func forStruct(t *types.Struct) Type {
 	return s
 }
 
-func forArray(t *types.Array) error {
+func forArray(t *types.Array) Type {
+	return Array{
+		Length:  t.Len(),
+		Element: processType(t.Elem()),
+	}
+}
+
+func forSlice(t *types.Slice) Type {
 	return nil
 }
 
-func forSlice(t *types.Slice) error {
-	return nil
-}
-
-func forMap(t *types.Map) error {
+func forMap(t *types.Map) Type {
 	return nil
 }
 
