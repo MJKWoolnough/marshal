@@ -82,7 +82,10 @@ func forSlice(t *types.Slice) Type {
 }
 
 func forMap(t *types.Map) Type {
-	return nil
+	return Map{
+		Key:   processType(t.Key()),
+		Value: processType(t.Elem()),
+	}
 }
 
 var ErrNotFound = errors.New("typename not found")
