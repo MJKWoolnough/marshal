@@ -51,6 +51,8 @@ func processType(typ types.Type) Type {
 		return forMap(t)
 	case *types.Pointer:
 		return forPointer(t)
+	case *types.Basic:
+		return forBasic(t)
 	}
 
 	return nil
@@ -94,6 +96,45 @@ func forPointer(t *types.Pointer) Type {
 	return Pointer{
 		Element: processType(t.Elem()),
 	}
+}
+
+func forBasic(t *types.Basic) Type {
+	switch t.Kind() {
+	case types.Bool:
+		return Bool{}
+	case types.Int:
+		return Int(0)
+	case types.Int8:
+		return Int(8)
+	case types.Int16:
+		return Int(16)
+	case types.Int32:
+		return Int(32)
+	case types.Int64:
+		return Int(64)
+	case types.Uint:
+		return Uint(0)
+	case types.Uint8:
+		return Uint(8)
+	case types.Uint16:
+		return Uint(16)
+	case types.Uint32:
+		return Uint(32)
+	case types.Uint64, types.Uintptr:
+		return Uint(64)
+	case types.Float32:
+		return Float(32)
+	case types.Float64:
+		return Float(64)
+	case types.Complex64:
+		return Complex(64)
+	case types.Complex128:
+		return Complex(128)
+	case types.String:
+		return String{}
+	}
+
+	return nil
 }
 
 var ErrNotFound = errors.New("typename not found")
