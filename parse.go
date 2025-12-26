@@ -11,6 +11,7 @@ import (
 	"go/types"
 	"io"
 	"io/fs"
+	"iter"
 	"os"
 	"path"
 	"path/filepath"
@@ -29,13 +30,48 @@ type filesystem interface {
 	ReadFile(name string) ([]byte, error)
 }
 
-func ParsePackage(fsys filesystem, path string) (*types.Package, error) {
-	m, err := parseModFile(fsys, path)
-	if err != nil {
-		return nil, err
+func ParsePackage(modulePath string) (*types.Package, error) {
+	var (
+		m  *moduleDetails
+		sd string
+	)
+
+	for path, sub := range splitPath(modulePath) {
+		var err error
+
+		if m, err = parseModFile(&osFS{os.DirFS(path).(statReadDirFileFS)}, path); err == nil {
+			sd = sub
+
+			break
+		}
 	}
 
-	return m.ParsePackage(m.Module, fsys)
+	if m == nil {
+		return nil, errNoModFile
+	}
+
+	return m.importPath(path.Join(m.Module, sd))
+}
+
+func splitPath(path string) iter.Seq2[string, string] {
+	return func(yield func(string, string) bool) {
+		left := strings.TrimSuffix(path, "/")
+		right := ""
+
+		for {
+			if !yield(left, right) {
+				return
+			}
+
+			pos := strings.LastIndexByte(left, '/')
+			if pos == -1 {
+				return
+			}
+
+			left = path[:pos]
+			right = path[pos+1:]
+		}
+	}
 }
 
 func hasSubdir(root, dir string) (string, bool) {
@@ -195,7 +231,7 @@ type importDetails struct {
 }
 
 func (m *moduleDetails) Resolve(importURL string) *importDetails {
-	if strings.HasPrefix(importURL, m.Module+"/") {
+	if strings.HasPrefix(importURL, m.Module+"/") || importURL == m.Module {
 		return &importDetails{Base: m.Path, Version: "", Path: strings.TrimPrefix(strings.TrimPrefix(importURL, m.Module), "/")}
 	}
 
@@ -328,4 +364,7 @@ func (o *osFS) ReadDir(path string) ([]fs.FileInfo, error) {
 	return f.(*os.File).Readdir(-1)
 }
 
-var errMultiplePackages = errors.New("multiple packages found")
+var (
+	errMultiplePackages = errors.New("multiple packages found")
+	errNoModFile        = errors.New("no module file found")
+)
