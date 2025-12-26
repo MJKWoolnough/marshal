@@ -4,7 +4,7 @@ import (
 	"archive/zip"
 	"io"
 	"io/fs"
-	"path/filepath"
+	"path"
 	"strings"
 )
 
@@ -14,11 +14,11 @@ type zipFS struct {
 }
 
 func (z *zipFS) OpenFile(name string) (io.ReadCloser, error) {
-	return z.Open(filepath.Join(z.base, name))
+	return z.Open(path.Join(z.base, name))
 }
 
 func (z *zipFS) ReadDir(name string) ([]fs.FileInfo, error) {
-	f, err := z.Open(filepath.Join(z.base, name))
+	f, err := z.Open(path.Join(z.base, name))
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (z *zipFS) ReadDir(name string) ([]fs.FileInfo, error) {
 }
 
 func (z *zipFS) ReadFile(name string) ([]byte, error) {
-	f, err := z.Open(filepath.Join(z.base, name))
+	f, err := z.Open(path.Join(z.base, name))
 	if err != nil {
 		return nil, err
 	}
@@ -59,16 +59,16 @@ func (z *zipFS) ReadFile(name string) ([]byte, error) {
 	return buf, nil
 }
 
-func (z *zipFS) IsDir(path string) bool {
-	path = filepath.Join(z.base, path)
-	pathWithSlash := path
+func (z *zipFS) IsDir(dir string) bool {
+	dir = path.Join(z.base, dir)
+	pathWithSlash := dir
 
-	if !strings.HasSuffix(path, "/") {
+	if !strings.HasSuffix(dir, "/") {
 		pathWithSlash += "/"
 	}
 
 	for _, f := range z.File {
-		if f.Name == path {
+		if f.Name == dir {
 			return false
 		} else if strings.HasPrefix(f.Name, pathWithSlash) {
 			return true
