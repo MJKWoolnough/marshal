@@ -76,7 +76,9 @@ func forArray(t *types.Array) Type {
 }
 
 func forSlice(t *types.Slice) Type {
-	return nil
+	return Slice{
+		Element: processType(t.Elem()),
+	}
 }
 
 func forMap(t *types.Map) Type {
