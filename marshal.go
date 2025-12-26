@@ -24,11 +24,7 @@ func run() error {
 
 	flag.Parse()
 
-	return processType(module, typename)
-}
-
-func processType(module, typename string) error {
-	pkg, err := ParsePackage(os.DirFS(module).(filesystem), module)
+	pkg, err := ParsePackage(module)
 	if err != nil {
 		return err
 	}
@@ -38,6 +34,12 @@ func processType(module, typename string) error {
 		return ErrNotFound
 	}
 
+	processType(typ)
+
+	return nil
+}
+
+func processType(typ types.Object) Type {
 	switch t := typ.Type().Underlying().(type) {
 	case *types.Struct:
 		return forStruct(t)
@@ -52,12 +54,18 @@ func processType(module, typename string) error {
 	return nil
 }
 
-func forStruct(t *types.Struct) error {
-	for field := range t.Fields() {
-		fmt.Println(field.Name(), field.Type())
+func forStruct(t *types.Struct) Type {
+	var s Struct
+
+	for field := range t.NumFields() {
+		s.Fields = append(s.Fields, Field{
+			Name: t.Field(field).Name(),
+			Type: processType(t.Field(field)),
+			Tag:  t.Tag(field),
+		})
 	}
 
-	return nil
+	return s
 }
 
 func forArray(t *types.Array) error {
