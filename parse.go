@@ -16,6 +16,7 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 
 	"golang.org/x/mod/modfile"
@@ -30,7 +31,7 @@ type filesystem interface {
 	ReadFile(name string) ([]byte, error)
 }
 
-func ParsePackage(modulePath string) (*types.Package, error) {
+func ParsePackage(modulePath string, ignore ...string) (*types.Package, error) {
 	var (
 		m  *moduleDetails
 		sd string
@@ -50,7 +51,7 @@ func ParsePackage(modulePath string) (*types.Package, error) {
 		return nil, errNoModFile
 	}
 
-	return m.importPath(path.Join(m.Module, sd))
+	return m.importPath(path.Join(m.Module, sd), ignore...)
 }
 
 func splitPath(path string) iter.Seq2[string, string] {
@@ -145,10 +146,22 @@ func parseModFile(fsys filesystem, path string) (*moduleDetails, error) {
 	}, nil
 }
 
-func (m *moduleDetails) ParsePackage(pkgPath string, fsys filesystem) (*types.Package, error) {
+func (m *moduleDetails) ParsePackage(fsys filesystem, pkgPath string, ignore ...string) (*types.Package, error) {
 	files, err := listGoFiles(fsys)
 	if err != nil {
 		return nil, err
+	}
+
+	if len(ignore) > 0 {
+		filtered := make([]string, 0, len(files))
+
+		for _, file := range files {
+			if !slices.Contains(ignore, file) {
+				filtered = append(filtered, file)
+			}
+		}
+
+		files = filtered
 	}
 
 	parsedFiles, err := m.parseFiles(pkgPath, fsys, files)
@@ -212,7 +225,7 @@ func (m *moduleDetails) Import(path string) (*types.Package, error) {
 	return pkg, nil
 }
 
-func (m *moduleDetails) importPath(path string) (*types.Package, error) {
+func (m *moduleDetails) importPath(path string, ignore ...string) (*types.Package, error) {
 	im := m.Resolve(path)
 	if im == nil {
 		return m.defaultImporter.Import(path)
@@ -223,7 +236,7 @@ func (m *moduleDetails) importPath(path string) (*types.Package, error) {
 		return nil, err
 	}
 
-	return m.ParsePackage(path, fs)
+	return m.ParsePackage(fs, path, ignore...)
 }
 
 type importDetails struct {
