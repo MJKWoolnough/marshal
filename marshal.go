@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"go/types"
 	"os"
+	"path/filepath"
 )
 
 func main() {
@@ -17,14 +18,20 @@ func main() {
 }
 
 func run() error {
-	var typename, module string
+	var typename, module, output string
 
 	flag.StringVar(&typename, "type", "", "typename to provide marshal/unmarshal functions for")
 	flag.StringVar(&module, "module", "", "path to local module")
+	flag.StringVar(&output, "o", "", "output file")
 
 	flag.Parse()
 
-	pkg, err := ParsePackage(module)
+	ignore, err := ignoreOutputFile(module, output)
+	if err != nil {
+		return err
+	}
+
+	pkg, err := ParsePackage(module, ignore...)
 	if err != nil {
 		return err
 	}
@@ -37,6 +44,30 @@ func run() error {
 	processType(typ.Type())
 
 	return nil
+}
+
+func ignoreOutputFile(module, output string) ([]string, error) {
+	if output == "" || output == "-" {
+		return nil, nil
+	}
+
+	var ignore []string
+
+	o, err := filepath.Abs(output)
+	if err != nil {
+		return nil, err
+	}
+
+	m, err := filepath.Abs(module)
+	if err != nil {
+		return nil, err
+	}
+
+	if filepath.Dir(o) == filepath.Clean(m) {
+		ignore = []string{filepath.Base(o)}
+	}
+
+	return ignore, nil
 }
 
 func processType(typ types.Type) Type {
