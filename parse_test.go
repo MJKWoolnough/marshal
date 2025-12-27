@@ -95,7 +95,7 @@ func TestParsePackage(t *testing.T) {
 
 	m := moduleDetails{fset: token.NewFileSet()}
 
-	if pkg, err := m.ParsePackage("", tfs); err != nil {
+	if pkg, err := m.ParsePackage(tfs, ""); err != nil {
 		t.Errorf("unexpected error: %s", err)
 	} else if a := pkg.Scope().Lookup("A"); a == nil {
 		t.Error("expected type def, got nil")
@@ -109,6 +109,12 @@ func TestParsePackage(t *testing.T) {
 		t.Error("expected basic type")
 	} else if b.Kind() != types.Int {
 		t.Errorf("expected type %d, got %v", types.Int, b.Kind())
+	}
+
+	if pkg, err := m.ParsePackage(tfs, "", "a.go"); err != nil {
+		t.Errorf("unexpected error: %s", err)
+	} else if a := pkg.Scope().Lookup("A"); a != nil {
+		t.Errorf("expected no object, got %v", a)
 	}
 }
 
