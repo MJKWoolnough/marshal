@@ -1,6 +1,8 @@
 package main
 
-import "go/types"
+import (
+	"go/types"
+)
 
 type Type interface{}
 
@@ -46,8 +48,9 @@ type Bool struct{}
 type Interface struct{}
 
 type NamedType struct {
-	Name string
-	Type Type
+	Package string
+	Name    string
+	Type    Type
 
 	ImplementsAppendJSON      bool
 	ImplementsMarshalJSON     bool
@@ -60,22 +63,32 @@ type NamedType struct {
 }
 
 func processType(typ types.Type) Type {
+	var obj Type
+
 	switch t := typ.Underlying().(type) {
 	case *types.Struct:
-		return toStruct(t)
+		obj = toStruct(t)
 	case *types.Array:
-		return toArray(t)
+		obj = toArray(t)
 	case *types.Slice:
-		return toSlice(t)
+		obj = toSlice(t)
 	case *types.Map:
-		return toMap(t)
+		obj = toMap(t)
 	case *types.Pointer:
-		return toPointer(t)
+		obj = toPointer(t)
 	case *types.Basic:
-		return toBasic(t)
+		obj = toBasic(t)
 	}
 
-	return nil
+	if named, ok := typ.(*types.Named); ok {
+		obj = NamedType{
+			Package: named.Obj().Pkg().Path(),
+			Name:    named.Obj().Name(),
+			Type:    obj,
+		}
+	}
+
+	return obj
 }
 
 func toStruct(t *types.Struct) Type {
