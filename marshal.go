@@ -40,7 +40,9 @@ func run() error {
 		return ErrNotFound
 	}
 
-	processType(typ.Type())
+	var p processor
+
+	p.processType(typ.Type())
 
 	return nil
 }

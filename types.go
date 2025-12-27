@@ -62,20 +62,31 @@ type NamedType struct {
 	ImplementsReadFrom        bool
 }
 
-func processType(typ types.Type) Type {
+type processor struct {
+	pkg     string
+	methods []method
+}
+
+type method struct {
+	name    string
+	args    []string
+	returns []string
+}
+
+func (p *processor) processType(typ types.Type) Type {
 	var obj Type
 
 	switch t := typ.Underlying().(type) {
 	case *types.Struct:
-		obj = toStruct(t)
+		obj = p.toStruct(t)
 	case *types.Array:
-		obj = toArray(t)
+		obj = p.toArray(t)
 	case *types.Slice:
-		obj = toSlice(t)
+		obj = p.toSlice(t)
 	case *types.Map:
-		obj = toMap(t)
+		obj = p.toMap(t)
 	case *types.Pointer:
-		obj = toPointer(t)
+		obj = p.toPointer(t)
 	case *types.Basic:
 		obj = toBasic(t)
 	}
@@ -91,13 +102,13 @@ func processType(typ types.Type) Type {
 	return obj
 }
 
-func toStruct(t *types.Struct) Type {
+func (p *processor) toStruct(t *types.Struct) Type {
 	var s Struct
 
 	for field := range t.NumFields() {
 		s.Fields = append(s.Fields, Field{
 			Name: t.Field(field).Name(),
-			Type: processType(t.Field(field).Type()),
+			Type: p.processType(t.Field(field).Type()),
 			Tag:  t.Tag(field),
 		})
 	}
@@ -105,29 +116,29 @@ func toStruct(t *types.Struct) Type {
 	return s
 }
 
-func toArray(t *types.Array) Type {
+func (p *processor) toArray(t *types.Array) Type {
 	return Array{
 		Length:  t.Len(),
-		Element: processType(t.Elem()),
+		Element: p.processType(t.Elem()),
 	}
 }
 
-func toSlice(t *types.Slice) Type {
+func (p *processor) toSlice(t *types.Slice) Type {
 	return Slice{
-		Element: processType(t.Elem()),
+		Element: p.processType(t.Elem()),
 	}
 }
 
-func toMap(t *types.Map) Type {
+func (p *processor) toMap(t *types.Map) Type {
 	return Map{
-		Key:   processType(t.Key()),
-		Value: processType(t.Elem()),
+		Key:   p.processType(t.Key()),
+		Value: p.processType(t.Elem()),
 	}
 }
 
-func toPointer(t *types.Pointer) Type {
+func (p *processor) toPointer(t *types.Pointer) Type {
 	return Pointer{
-		Element: processType(t.Elem()),
+		Element: p.processType(t.Elem()),
 	}
 }
 
