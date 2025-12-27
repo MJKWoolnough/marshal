@@ -179,7 +179,7 @@ func (m *moduleDetails) ParsePackage(fsys filesystem, pkgPath string, ignore ...
 		}
 	)
 
-	return conf.Check(".", m.fset, parsedFiles, &info)
+	return conf.Check(pkgPath, m.fset, parsedFiles, &info)
 }
 
 func (m *moduleDetails) parseFiles(pkgPath string, fsys filesystem, files []string) ([]*ast.File, error) {
