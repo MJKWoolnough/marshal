@@ -95,10 +95,12 @@ func TestParsePackage(t *testing.T) {
 
 	m := moduleDetails{fset: token.NewFileSet()}
 
-	if pkg, err := m.ParsePackage(tfs, ""); err != nil {
+	if pkg, err := m.ParsePackage(tfs, "example.com/pkg"); err != nil {
 		t.Errorf("unexpected error: %s", err)
 	} else if a := pkg.Scope().Lookup("A"); a == nil {
 		t.Error("expected type def, got nil")
+	} else if pkgPath := a.Pkg().Path(); pkgPath != "example.com/pkg" {
+		t.Errorf("expecting package path %q, got %q", "example.com/pkg", pkgPath)
 	} else if as, ok := a.Type().Underlying().(*types.Struct); !ok {
 		t.Error("expected struct type")
 	} else if nf := as.NumFields(); nf != 1 {
