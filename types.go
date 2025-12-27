@@ -58,6 +58,7 @@ type NamedType struct {
 type processor struct {
 	pkg     string
 	methods []method
+	named   map[string]*NamedType
 }
 
 type method struct {
@@ -67,28 +68,20 @@ type method struct {
 }
 
 func (p *processor) processType(typ types.Type) Type {
-	var obj Type
-
-	switch t := typ.Underlying().(type) {
-	case *types.Struct:
-		obj = p.toStruct(t)
-	case *types.Array:
-		obj = p.toArray(t)
-	case *types.Slice:
-		obj = p.toSlice(t)
-	case *types.Map:
-		obj = p.toMap(t)
-	case *types.Pointer:
-		obj = p.toPointer(t)
-	case *types.Basic:
-		obj = toBasic(t)
-	}
+	var nt NamedType
 
 	if named, ok := typ.(*types.Named); ok {
-		nt := NamedType{
+		id := named.Obj().Id()
+
+		if exist, ok := p.named[id]; ok {
+			return exist
+		}
+
+		p.named[id] = &nt
+
+		nt = NamedType{
 			Package:    named.Obj().Pkg().Path(),
 			Name:       named.Obj().Name(),
-			Type:       obj,
 			Implements: make([]bool, len(p.methods)),
 		}
 
@@ -126,11 +119,28 @@ func (p *processor) processType(typ types.Type) Type {
 				break
 			}
 		}
-
-		obj = nt
 	}
 
-	return obj
+	switch t := typ.Underlying().(type) {
+	case *types.Struct:
+		nt.Type = p.toStruct(t)
+	case *types.Array:
+		nt.Type = p.toArray(t)
+	case *types.Slice:
+		nt.Type = p.toSlice(t)
+	case *types.Map:
+		nt.Type = p.toMap(t)
+	case *types.Pointer:
+		nt.Type = p.toPointer(t)
+	case *types.Basic:
+		nt.Type = toBasic(t)
+	}
+
+	if nt.Name == "" {
+		return nt.Type
+	}
+
+	return nt
 }
 
 func (p *processor) toStruct(t *types.Struct) Type {
