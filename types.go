@@ -52,14 +52,7 @@ type NamedType struct {
 	Name    string
 	Type    Type
 
-	ImplementsAppendJSON      bool
-	ImplementsMarshalJSON     bool
-	ImplementsUnmarshalJSON   bool
-	ImplementsAppendBinary    bool
-	ImplementsMarshalBinary   bool
-	ImplementsUnmarshalBinary bool
-	ImplementsWriteTo         bool
-	ImplementsReadFrom        bool
+	Implements []bool
 }
 
 type processor struct {
@@ -92,11 +85,49 @@ func (p *processor) processType(typ types.Type) Type {
 	}
 
 	if named, ok := typ.(*types.Named); ok {
-		obj = NamedType{
-			Package: named.Obj().Pkg().Path(),
-			Name:    named.Obj().Name(),
-			Type:    obj,
+		nt := NamedType{
+			Package:    named.Obj().Pkg().Path(),
+			Name:       named.Obj().Name(),
+			Type:       obj,
+			Implements: make([]bool, len(p.methods)),
 		}
+
+		for method := range named.Methods() {
+			name := method.Name()
+
+		Loop:
+			for i, req := range p.methods {
+				if req.name != name {
+					continue
+				}
+
+				sig := method.Signature()
+				params := sig.Params()
+				results := sig.Results()
+
+				if params.Len() != len(req.args) || results.Len() != len(req.returns) {
+					break
+				}
+
+				for n, arg := range req.args {
+					if params.At(n).Type().String() != arg {
+						break Loop
+					}
+				}
+
+				for n, ret := range req.returns {
+					if results.At(n).Type().String() != ret {
+						break Loop
+					}
+				}
+
+				nt.Implements[i] = true
+
+				break
+			}
+		}
+
+		obj = nt
 	}
 
 	return obj
