@@ -10,7 +10,16 @@ import (
 func constructFile(w io.Writer, pkg string) {
 	fset := token.NewFileSet()
 	file := &ast.File{
-		Name: ast.NewIdent(pkg),
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{
+					Slash: 1,
+					Text:  "//go:generate go run vimagination.zapto.org/marshal@latest --opts",
+				},
+			},
+		},
+		Name:    ast.NewIdent(pkg),
+		Package: 3,
 		Decls: []ast.Decl{
 			&ast.GenDecl{
 				Tok: token.IMPORT,
@@ -25,7 +34,7 @@ func constructFile(w io.Writer, pkg string) {
 						Path: &ast.BasicLit{
 							Kind:     token.STRING,
 							Value:    `"vimagination.zapto.org/byteio"`,
-							ValuePos: 3,
+							ValuePos: 5,
 						},
 					},
 				},
@@ -33,8 +42,8 @@ func constructFile(w io.Writer, pkg string) {
 		},
 	}
 
-	wsfile := fset.AddFile("out.go", 1, 4)
+	wsfile := fset.AddFile("out.go", 1, 10)
 
-	wsfile.SetLines([]int{0, 1, 2, 3})
+	wsfile.SetLines([]int{0, 1, 2, 3, 4, 5})
 	format.Node(w, fset, file)
 }
