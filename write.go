@@ -23,8 +23,9 @@ func constructFile(w io.Writer, pkg string) {
 					},
 					&ast.ImportSpec{
 						Path: &ast.BasicLit{
-							Kind:  token.STRING,
-							Value: `"vimagination.zapto.org/byteio"`,
+							Kind:     token.STRING,
+							Value:    `"vimagination.zapto.org/byteio"`,
+							ValuePos: 3,
 						},
 					},
 				},
@@ -32,5 +33,8 @@ func constructFile(w io.Writer, pkg string) {
 		},
 	}
 
+	wsfile := fset.AddFile("out.go", 1, 4)
+
+	wsfile.SetLines([]int{0, 1, 2, 3})
 	format.Node(w, fset, file)
 }
