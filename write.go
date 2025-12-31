@@ -267,6 +267,14 @@ func marshalBinary(lines *pos) *ast.FuncDecl {
 
 func writeTo(lines *pos) *ast.FuncDecl {
 	return &ast.FuncDecl{
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{
+					Slash: lines.newLine(),
+					Text:  "// WriteTo implements the io.WriterTo interface.",
+				},
+			},
+		},
 		Recv: &ast.FieldList{
 			List: []*ast.Field{
 				{
@@ -284,7 +292,6 @@ func writeTo(lines *pos) *ast.FuncDecl {
 			Name: "WriteTo",
 		},
 		Type: &ast.FuncType{
-			Func: lines.newLine(),
 			Params: &ast.FieldList{
 				List: []*ast.Field{
 					{
