@@ -180,6 +180,14 @@ func assignBinary(lines *pos) *ast.FuncDecl {
 
 func marshalBinary(lines *pos) *ast.FuncDecl {
 	return &ast.FuncDecl{
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{
+					Slash: lines.newLine(),
+					Text:  "// MarshalBinary implements the encoding.BinaryMarshaler interface.",
+				},
+			},
+		},
 		Recv: &ast.FieldList{
 			List: []*ast.Field{
 				{
@@ -197,7 +205,6 @@ func marshalBinary(lines *pos) *ast.FuncDecl {
 			Name: "MarshalBinary",
 		},
 		Type: &ast.FuncType{
-			Func:   lines.newLine(),
 			Params: &ast.FieldList{},
 			Results: &ast.FieldList{
 				List: []*ast.Field{
