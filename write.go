@@ -55,6 +55,96 @@ func constructFile(w io.Writer, pkg string) {
 					},
 				},
 			},
+			&ast.FuncDecl{
+				Recv: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Names: []*ast.Ident{
+								ast.NewIdent("t"),
+							},
+							Type: &ast.UnaryExpr{
+								Op: token.MUL,
+								X:  ast.NewIdent("Type"),
+							},
+						},
+					},
+				},
+				Name: &ast.Ident{
+					Name: "AppendBinary",
+				},
+				Type: &ast.FuncType{
+					Params: &ast.FieldList{
+						List: []*ast.Field{
+							{
+								Names: []*ast.Ident{
+									ast.NewIdent("b"),
+								},
+								Type: &ast.ArrayType{
+									Elt: ast.NewIdent("byte"),
+								},
+							},
+						},
+					},
+					Results: &ast.FieldList{
+						List: []*ast.Field{
+							{
+								Type: &ast.ArrayType{
+									Elt: ast.NewIdent("byte"),
+								},
+							},
+							{
+								Type: ast.NewIdent("error"),
+							},
+						},
+					},
+				},
+				Body: &ast.BlockStmt{
+					List: []ast.Stmt{
+						&ast.AssignStmt{
+							Lhs: []ast.Expr{
+								ast.NewIdent("eb"),
+							},
+							Tok: token.DEFINE,
+							Rhs: []ast.Expr{
+								&ast.CallExpr{
+									Fun: &ast.SelectorExpr{
+										X:   ast.NewIdent("byteio"),
+										Sel: ast.NewIdent("MemLittleEndian"),
+									},
+									Args: []ast.Expr{
+										ast.NewIdent("b"),
+									},
+								},
+							},
+						},
+						&ast.AssignStmt{
+							Lhs: []ast.Expr{
+								ast.NewIdent("err"),
+							},
+							Tok: token.DEFINE,
+							Rhs: []ast.Expr{
+								&ast.CallExpr{
+									Fun: ast.NewIdent("_marshalType"),
+									Args: []ast.Expr{
+										ast.NewIdent("t"),
+										&ast.UnaryExpr{
+											Op: token.AND,
+											X:  ast.NewIdent("eb"),
+										},
+									},
+								},
+							},
+						},
+						&ast.ReturnStmt{
+							Return: newLine(),
+							Results: []ast.Expr{
+								ast.NewIdent("eb"),
+								ast.NewIdent("err"),
+							},
+						},
+					},
+				},
+			},
 		},
 	}
 
