@@ -67,6 +67,7 @@ func constructFile(w io.Writer, pkg string) {
 			assignBinary(&lines),
 			marshalBinary(&lines),
 			writeTo(&lines),
+			marshalFunc(&lines),
 		},
 	}
 
@@ -649,6 +650,65 @@ func writeTo(lines *pos) *ast.FuncDecl {
 							Sel: ast.NewIdent("Count"),
 						},
 						ast.NewIdent("err"),
+					},
+				},
+			},
+		},
+	}
+}
+
+func marshalFunc(lines *pos) *ast.FuncDecl {
+	return &ast.FuncDecl{
+		Name: &ast.Ident{
+			Name: "_marshalType",
+		},
+		Type: &ast.FuncType{
+			Func: lines.newLine(),
+			TypeParams: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{
+							ast.NewIdent("W"),
+						},
+						Type: &ast.SelectorExpr{
+							X:   ast.NewIdent("byteio"),
+							Sel: ast.NewIdent("StickyWriter"),
+						},
+					},
+				},
+			},
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{
+							ast.NewIdent("t"),
+						},
+						Type: &ast.UnaryExpr{
+							Op: token.MUL,
+							X:  ast.NewIdent("Type"),
+						},
+					},
+					{
+						Names: []*ast.Ident{
+							ast.NewIdent("w"),
+						},
+						Type: ast.NewIdent("W"),
+					},
+				},
+			},
+			Results: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Type: ast.NewIdent("error"),
+					},
+				},
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.ReturnStmt{
+					Results: []ast.Expr{
+						ast.NewIdent("nil"),
 					},
 				},
 			},
