@@ -79,6 +79,14 @@ func constructFile(w io.Writer, pkg string) {
 
 func assignBinary(lines *pos) *ast.FuncDecl {
 	return &ast.FuncDecl{
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{
+					Slash: lines.newLine(),
+					Text:  "// AppendBinary implements the encoding.BinaryAppender interface.",
+				},
+			},
+		},
 		Recv: &ast.FieldList{
 			List: []*ast.Field{
 				{
