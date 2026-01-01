@@ -18,7 +18,7 @@ func (p *pos) newLine() token.Pos {
 	return token.Pos(l + 1)
 }
 
-func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string, types ...*types.Named) {
+func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string, types ...*types.Named) error {
 	fset := token.NewFileSet()
 	lines := pos{0}
 	file := &ast.File{
@@ -61,7 +61,7 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string, 
 	wsfile := fset.AddFile("out.go", 1, len(lines))
 
 	wsfile.SetLines(lines)
-	format.Node(w, fset, file)
+	return format.Node(w, fset, file)
 }
 
 func marshalName(typ *types.Named) string {
