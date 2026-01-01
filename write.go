@@ -1318,5 +1318,63 @@ func readFrom(lines *pos, typeName, funcName, unmarshalName string) *ast.FuncDec
 }
 
 func unmarshalFunc(lines *pos, typ *types.Named) *ast.FuncDecl {
-	return nil
+	typeName := typ.Obj().Name()
+	unmarshalName := unmarshalName(typ)
+
+	return &ast.FuncDecl{
+		Name: &ast.Ident{
+			Name: unmarshalName,
+		},
+		Type: &ast.FuncType{
+			Func: lines.newLine(),
+			TypeParams: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{
+							ast.NewIdent("R"),
+						},
+						Type: &ast.SelectorExpr{
+							X:   ast.NewIdent("byteio"),
+							Sel: ast.NewIdent("StickyReader"),
+						},
+					},
+				},
+			},
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{
+							ast.NewIdent("t"),
+						},
+						Type: &ast.UnaryExpr{
+							Op: token.MUL,
+							X:  ast.NewIdent(typeName),
+						},
+					},
+					{
+						Names: []*ast.Ident{
+							ast.NewIdent("r"),
+						},
+						Type: ast.NewIdent("R"),
+					},
+				},
+			},
+			Results: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Type: ast.NewIdent("error"),
+					},
+				},
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.ReturnStmt{
+					Results: []ast.Expr{
+						ast.NewIdent("nil"),
+					},
+				},
+			},
+		},
+	}
 }
