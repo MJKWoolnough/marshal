@@ -18,7 +18,7 @@ func (p *pos) newLine() token.Pos {
 	return token.Pos(l + 1)
 }
 
-func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string, types ...*types.Named) error {
+func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, writer, reader string, types ...*types.Named) error {
 	fset := token.NewFileSet()
 	lines := pos{0}
 	file := &ast.File{
@@ -33,13 +33,14 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string, 
 		Name:    ast.NewIdent(pkg),
 		Package: lines.newLine(),
 		Decls: []ast.Decl{
-			imports(&lines, writer != ""),
+			imports(&lines, writer != "" || reader != ""),
 		},
 	}
 
 	for _, typ := range types {
 		typeName := typ.Obj().Name()
 		marshalName := marshalName(typ)
+		unmarshalName := unmarshalName(typ)
 
 		if assigner != "" {
 			file.Decls = append(file.Decls, assignBinary(&lines, typeName, assigner, marshalName))
@@ -52,10 +53,24 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string, 
 		if writer != "" {
 			file.Decls = append(file.Decls, writeTo(&lines, typeName, writer, marshalName))
 		}
+
+		if unmarshaler != "" {
+			file.Decls = append(file.Decls, unmarshalBinary(&lines, typeName, unmarshaler, unmarshalName))
+		}
+
+		if reader != "" {
+			file.Decls = append(file.Decls, readFrom(&lines, typeName, reader, unmarshalName))
+		}
 	}
 
 	for _, typ := range types {
-		file.Decls = append(file.Decls, marshalFunc(&lines, typ))
+		if assigner != "" || marshaler != "" || writer != "" {
+			file.Decls = append(file.Decls, marshalFunc(&lines, typ))
+		}
+
+		if unmarshaler != "" || reader != "" {
+			file.Decls = append(file.Decls, unmarshalFunc(&lines, typ))
+		}
 	}
 
 	wsfile := fset.AddFile("out.go", 1, len(lines))
@@ -66,6 +81,10 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string, 
 
 func marshalName(typ *types.Named) string {
 	return "_marshal·" + strings.ReplaceAll(strings.ReplaceAll(typ.Obj().Name(), "·", "··"), ".", "·")
+}
+
+func unmarshalName(typ *types.Named) string {
+	return "_unmarshal·" + strings.ReplaceAll(strings.ReplaceAll(typ.Obj().Name(), "·", "··"), ".", "·")
 }
 
 func imports(lines *pos, includeStdlib bool) *ast.GenDecl {
@@ -789,4 +808,16 @@ func marshalFunc(lines *pos, typ *types.Named) *ast.FuncDecl {
 			},
 		},
 	}
+}
+
+func unmarshalBinary(lines *pos, typeName, funcName, unmarshalName string) *ast.FuncDecl {
+	return nil
+}
+
+func readFrom(lines *pos, typeName, funcName, unmarshalName string) *ast.FuncDecl {
+	return nil
+}
+
+func unmarshalFunc(lines *pos, typ *types.Named) *ast.FuncDecl {
+	return nil
 }
