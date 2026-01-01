@@ -47,7 +47,7 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string) 
 		file.Decls = append(file.Decls, writeTo(&lines, "AType", writer, "_marshalAType"))
 	}
 
-	file.Decls = append(file.Decls, marshalFunc(&lines))
+	file.Decls = append(file.Decls, marshalFunc(&lines, "AType", "_marshalAType"))
 
 	wsfile := fset.AddFile("out.go", 1, len(lines))
 
@@ -716,10 +716,10 @@ func writeTo(lines *pos, typeName, funcName, marshalName string) *ast.FuncDecl {
 	}
 }
 
-func marshalFunc(lines *pos) *ast.FuncDecl {
+func marshalFunc(lines *pos, typeName, marshalName string) *ast.FuncDecl {
 	return &ast.FuncDecl{
 		Name: &ast.Ident{
-			Name: "_marshalType",
+			Name: marshalName,
 		},
 		Type: &ast.FuncType{
 			Func: lines.newLine(),
@@ -744,7 +744,7 @@ func marshalFunc(lines *pos) *ast.FuncDecl {
 						},
 						Type: &ast.UnaryExpr{
 							Op: token.MUL,
-							X:  ast.NewIdent("Type"),
+							X:  ast.NewIdent(typeName),
 						},
 					},
 					{
