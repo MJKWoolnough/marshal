@@ -898,7 +898,423 @@ func unmarshalBinary(lines *pos, typeName, funcName, unmarshalName string) *ast.
 }
 
 func readFrom(lines *pos, typeName, funcName, unmarshalName string) *ast.FuncDecl {
-	return nil
+	comment := "// ReadFrom implements the io.ReaderFrom interface."
+
+	if funcName != "ReadFrom" {
+		comment = "// " + funcName + " reads data from r until the type is fully decoded.\n//\n// The return value n is the number of bytes read. Any error encountered during the read is also returned."
+	}
+
+	return &ast.FuncDecl{
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{
+					Slash: lines.newLine(),
+					Text:  comment,
+				},
+			},
+		},
+		Recv: &ast.FieldList{
+			List: []*ast.Field{
+				{
+					Names: []*ast.Ident{
+						ast.NewIdent("t"),
+					},
+					Type: &ast.UnaryExpr{
+						Op: token.MUL,
+						X:  ast.NewIdent(typeName),
+					},
+				},
+			},
+		},
+		Name: &ast.Ident{
+			Name: funcName,
+		},
+		Type: &ast.FuncType{
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{
+							ast.NewIdent("r"),
+						},
+						Type: &ast.SelectorExpr{
+							X:   ast.NewIdent("io"),
+							Sel: ast.NewIdent("Reader"),
+						},
+					},
+				},
+			},
+			Results: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Type: ast.NewIdent("int64"),
+					},
+					{
+						Type: ast.NewIdent("error"),
+					},
+				},
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.TypeSwitchStmt{
+					Assign: &ast.AssignStmt{
+						Lhs: []ast.Expr{
+							ast.NewIdent("r"),
+						},
+						Tok: token.DEFINE,
+						Rhs: []ast.Expr{
+							&ast.TypeAssertExpr{
+								X: ast.NewIdent("r"),
+							},
+						},
+					},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.CaseClause{
+								List: []ast.Expr{
+									&ast.UnaryExpr{
+										Op: token.MUL,
+										X: &ast.SelectorExpr{
+											X:   ast.NewIdent("byteio"),
+											Sel: ast.NewIdent("MemLittleEndian"),
+										},
+									},
+								},
+								Body: []ast.Stmt{
+									&ast.AssignStmt{
+										Lhs: []ast.Expr{
+											ast.NewIdent("l"),
+										},
+										Tok: token.DEFINE,
+										Rhs: []ast.Expr{
+											&ast.CallExpr{
+												Fun: ast.NewIdent("len"),
+												Args: []ast.Expr{
+													&ast.UnaryExpr{
+														Op: token.MUL,
+														X:  ast.NewIdent("r"),
+													},
+												},
+											},
+										},
+									},
+									&ast.AssignStmt{
+										Lhs: []ast.Expr{
+											ast.NewIdent("err"),
+										},
+										Tok: token.DEFINE,
+										Rhs: []ast.Expr{
+											&ast.CallExpr{
+												Fun: ast.NewIdent(unmarshalName),
+												Args: []ast.Expr{
+													ast.NewIdent("t"),
+													ast.NewIdent("r"),
+												},
+											},
+										},
+									},
+									&ast.ReturnStmt{
+										Return: lines.newLine(),
+										Results: []ast.Expr{
+											&ast.CallExpr{
+												Fun: ast.NewIdent("int64"),
+												Args: []ast.Expr{
+													&ast.BinaryExpr{
+														X: &ast.CallExpr{
+															Fun: ast.NewIdent("len"),
+															Args: []ast.Expr{
+																&ast.UnaryExpr{
+																	Op: token.MUL,
+																	X:  ast.NewIdent("r"),
+																},
+															},
+														},
+														Op: token.SUB,
+														Y:  ast.NewIdent("l"),
+													},
+												},
+											},
+											ast.NewIdent("err"),
+										},
+									},
+								},
+							},
+							&ast.CaseClause{
+								List: []ast.Expr{
+									&ast.UnaryExpr{
+										Op: token.MUL,
+										X: &ast.SelectorExpr{
+											X:   ast.NewIdent("byteio"),
+											Sel: ast.NewIdent("MemBigEndian"),
+										},
+									},
+								},
+								Body: []ast.Stmt{
+									&ast.AssignStmt{
+										Lhs: []ast.Expr{
+											ast.NewIdent("l"),
+										},
+										Tok: token.DEFINE,
+										Rhs: []ast.Expr{
+											&ast.CallExpr{
+												Fun: ast.NewIdent("len"),
+												Args: []ast.Expr{
+													&ast.UnaryExpr{
+														Op: token.MUL,
+														X:  ast.NewIdent("r"),
+													},
+												},
+											},
+										},
+									},
+									&ast.AssignStmt{
+										Lhs: []ast.Expr{
+											ast.NewIdent("err"),
+										},
+										Tok: token.DEFINE,
+										Rhs: []ast.Expr{
+											&ast.CallExpr{
+												Fun: ast.NewIdent(unmarshalName),
+												Args: []ast.Expr{
+													ast.NewIdent("t"),
+													ast.NewIdent("r"),
+												},
+											},
+										},
+									},
+									&ast.ReturnStmt{
+										Return: lines.newLine(),
+										Results: []ast.Expr{
+											&ast.CallExpr{
+												Fun: ast.NewIdent("int64"),
+												Args: []ast.Expr{
+													&ast.BinaryExpr{
+														X: &ast.CallExpr{
+															Fun: ast.NewIdent("len"),
+															Args: []ast.Expr{
+																&ast.UnaryExpr{
+																	Op: token.MUL,
+																	X:  ast.NewIdent("r"),
+																},
+															},
+														},
+														Op: token.SUB,
+														Y:  ast.NewIdent("l"),
+													},
+												},
+											},
+											ast.NewIdent("err"),
+										},
+									},
+								},
+							},
+							&ast.CaseClause{
+								List: []ast.Expr{
+									&ast.UnaryExpr{
+										Op: token.MUL,
+										X: &ast.SelectorExpr{
+											X:   ast.NewIdent("byteio"),
+											Sel: ast.NewIdent("StickyLittleEndianReader"),
+										},
+									},
+								},
+								Body: []ast.Stmt{
+									&ast.AssignStmt{
+										Lhs: []ast.Expr{
+											ast.NewIdent("l"),
+										},
+										Tok: token.DEFINE,
+										Rhs: []ast.Expr{
+											&ast.SelectorExpr{
+												X:   ast.NewIdent("r"),
+												Sel: ast.NewIdent("Count"),
+											},
+										},
+									},
+									&ast.AssignStmt{
+										Lhs: []ast.Expr{
+											&ast.SelectorExpr{
+												X:   ast.NewIdent("r"),
+												Sel: ast.NewIdent("Err"),
+											},
+										},
+										Tok: token.DEFINE,
+										Rhs: []ast.Expr{
+											&ast.CallExpr{
+												Fun: &ast.SelectorExpr{
+													X:   ast.NewIdent("cmp"),
+													Sel: ast.NewIdent("Or"),
+												},
+												Args: []ast.Expr{
+													&ast.SelectorExpr{
+														X:   ast.NewIdent("r"),
+														Sel: ast.NewIdent("Err"),
+													},
+													&ast.CallExpr{
+														Fun: ast.NewIdent(unmarshalName),
+														Args: []ast.Expr{
+															ast.NewIdent("t"),
+															ast.NewIdent("r"),
+														},
+													},
+												},
+											},
+										},
+									},
+									&ast.ReturnStmt{
+										Return: lines.newLine(),
+										Results: []ast.Expr{
+											&ast.BinaryExpr{
+												X: &ast.SelectorExpr{
+													X:   ast.NewIdent("r"),
+													Sel: ast.NewIdent("Count"),
+												},
+												Op: token.SUB,
+												Y:  ast.NewIdent("l"),
+											},
+											ast.NewIdent("err"),
+										},
+									},
+								},
+							},
+							&ast.CaseClause{
+								List: []ast.Expr{
+									&ast.UnaryExpr{
+										Op: token.MUL,
+										X: &ast.SelectorExpr{
+											X:   ast.NewIdent("byteio"),
+											Sel: ast.NewIdent("StickyBigEndianReader"),
+										},
+									},
+								},
+								Body: []ast.Stmt{
+									&ast.AssignStmt{
+										Lhs: []ast.Expr{
+											ast.NewIdent("l"),
+										},
+										Tok: token.DEFINE,
+										Rhs: []ast.Expr{
+											&ast.SelectorExpr{
+												X:   ast.NewIdent("r"),
+												Sel: ast.NewIdent("Count"),
+											},
+										},
+									},
+									&ast.AssignStmt{
+										Lhs: []ast.Expr{
+											&ast.SelectorExpr{
+												X:   ast.NewIdent("r"),
+												Sel: ast.NewIdent("Err"),
+											},
+										},
+										Tok: token.DEFINE,
+										Rhs: []ast.Expr{
+											&ast.CallExpr{
+												Fun: &ast.SelectorExpr{
+													X:   ast.NewIdent("cmp"),
+													Sel: ast.NewIdent("Or"),
+												},
+												Args: []ast.Expr{
+													&ast.SelectorExpr{
+														X:   ast.NewIdent("r"),
+														Sel: ast.NewIdent("Err"),
+													},
+													&ast.CallExpr{
+														Fun: ast.NewIdent(unmarshalName),
+														Args: []ast.Expr{
+															ast.NewIdent("t"),
+															ast.NewIdent("r"),
+														},
+													},
+												},
+											},
+										},
+									},
+									&ast.ReturnStmt{
+										Return: lines.newLine(),
+										Results: []ast.Expr{
+											&ast.BinaryExpr{
+												X: &ast.SelectorExpr{
+													X:   ast.NewIdent("r"),
+													Sel: ast.NewIdent("Count"),
+												},
+												Op: token.SUB,
+												Y:  ast.NewIdent("l"),
+											},
+											ast.NewIdent("err"),
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{
+						&ast.Ident{
+							NamePos: lines.newLine(),
+							Name:    "sr",
+						},
+					},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.CompositeLit{
+							Type: &ast.SelectorExpr{
+								X:   ast.NewIdent("byteio"),
+								Sel: ast.NewIdent("StickyLittleEndianReader"),
+							},
+							Elts: []ast.Expr{
+								&ast.KeyValueExpr{
+									Key:   ast.NewIdent("Reader"),
+									Value: ast.NewIdent("r"),
+								},
+							},
+						},
+					},
+				},
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{
+						ast.NewIdent("err"),
+					},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("cmp"),
+								Sel: ast.NewIdent("Or"),
+							},
+							Args: []ast.Expr{
+								&ast.CallExpr{
+									Fun: ast.NewIdent(unmarshalName),
+									Args: []ast.Expr{
+										ast.NewIdent("t"),
+										&ast.UnaryExpr{
+											Op: token.AND,
+											X:  ast.NewIdent("sr"),
+										},
+									},
+								},
+								&ast.SelectorExpr{
+									X:   ast.NewIdent("sr"),
+									Sel: ast.NewIdent("Err"),
+								},
+							},
+						},
+					},
+				},
+				&ast.ReturnStmt{
+					Return: lines.newLine(),
+					Results: []ast.Expr{
+						&ast.SelectorExpr{
+							X:   ast.NewIdent("sr"),
+							Sel: ast.NewIdent("Count"),
+						},
+						ast.NewIdent("err"),
+					},
+				},
+			},
+		},
+	}
 }
 
 func unmarshalFunc(lines *pos, typ *types.Named) *ast.FuncDecl {
