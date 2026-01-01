@@ -16,7 +16,7 @@ func (p *pos) newLine() token.Pos {
 	return token.Pos(l + 1)
 }
 
-func constructFile(w io.Writer, pkg string) {
+func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string) {
 	fset := token.NewFileSet()
 	lines := pos{0}
 	file := &ast.File{
@@ -31,13 +31,24 @@ func constructFile(w io.Writer, pkg string) {
 		Name:    ast.NewIdent(pkg),
 		Package: lines.newLine(),
 		Decls: []ast.Decl{
-			imports(&lines, true),
-			assignBinary(&lines, "AType", "AppendBinary", "_marshalAType"),
-			marshalBinary(&lines, "AType", "MarshalBinary", "_marshalAType"),
-			writeTo(&lines, "AType", "WriteTo", "_marshalAType"),
-			marshalFunc(&lines),
+			imports(&lines, writer != ""),
 		},
 	}
+
+	if assigner != "" {
+		file.Decls = append(file.Decls, assignBinary(&lines, "AType", assigner, "_marshalAType"))
+	}
+
+	if marshaler != "" {
+		file.Decls = append(file.Decls, marshalBinary(&lines, "AType", marshaler, "_marshalAType"))
+	}
+
+	if writer != "" {
+		file.Decls = append(file.Decls, writeTo(&lines, "AType", writer, "_marshalAType"))
+	}
+
+	file.Decls = append(file.Decls, marshalFunc(&lines))
+
 	wsfile := fset.AddFile("out.go", 1, len(lines))
 
 	wsfile.SetLines(lines)
