@@ -32,9 +32,9 @@ func constructFile(w io.Writer, pkg string) {
 		Package: lines.newLine(),
 		Decls: []ast.Decl{
 			imports(&lines, true),
-			assignBinary(&lines),
-			marshalBinary(&lines),
-			writeTo(&lines),
+			assignBinary(&lines, "AType", "AppendBinary", "_marshalAType"),
+			marshalBinary(&lines, "AType", "MarshalBinary", "_marshalAType"),
+			writeTo(&lines, "AType", "WriteTo", "_marshalAType"),
 			marshalFunc(&lines),
 		},
 	}
@@ -85,13 +85,19 @@ func imports(lines *pos, includeStdlib bool) *ast.GenDecl {
 	}
 }
 
-func assignBinary(lines *pos) *ast.FuncDecl {
+func assignBinary(lines *pos, typeName, funcName, marshalName string) *ast.FuncDecl {
+	comment := "// AppendBinary implements the encoding.BinaryAppender interface."
+
+	if funcName != "AppendBinary" {
+		comment = "// " + funcName + " appends the binary representation of itself to the end of b\n// (allocating a larger slice if necessary) and returns the updated slice."
+	}
+
 	return &ast.FuncDecl{
 		Doc: &ast.CommentGroup{
 			List: []*ast.Comment{
 				{
 					Slash: lines.newLine(),
-					Text:  "// AppendBinary implements the encoding.BinaryAppender interface.",
+					Text:  comment,
 				},
 			},
 		},
@@ -103,13 +109,13 @@ func assignBinary(lines *pos) *ast.FuncDecl {
 					},
 					Type: &ast.UnaryExpr{
 						Op: token.MUL,
-						X:  ast.NewIdent("Type"),
+						X:  ast.NewIdent(typeName),
 					},
 				},
 			},
 		},
 		Name: &ast.Ident{
-			Name: "AppendBinary",
+			Name: funcName,
 		},
 		Type: &ast.FuncType{
 			Params: &ast.FieldList{
@@ -163,7 +169,7 @@ func assignBinary(lines *pos) *ast.FuncDecl {
 					Tok: token.DEFINE,
 					Rhs: []ast.Expr{
 						&ast.CallExpr{
-							Fun: ast.NewIdent("_marshalType"),
+							Fun: ast.NewIdent(marshalName),
 							Args: []ast.Expr{
 								ast.NewIdent("t"),
 								&ast.UnaryExpr{
@@ -186,13 +192,19 @@ func assignBinary(lines *pos) *ast.FuncDecl {
 	}
 }
 
-func marshalBinary(lines *pos) *ast.FuncDecl {
+func marshalBinary(lines *pos, typeName, funcName, marshalName string) *ast.FuncDecl {
+	comment := "// MarshalBinary implements the encoding.BinaryMarshaler interface."
+
+	if funcName != "MarshalBinary" {
+		comment = "// " + funcName + " encodes the receiver into a binary form and returns the result."
+	}
+
 	return &ast.FuncDecl{
 		Doc: &ast.CommentGroup{
 			List: []*ast.Comment{
 				{
 					Slash: lines.newLine(),
-					Text:  "// MarshalBinary implements the encoding.BinaryMarshaler interface.",
+					Text:  comment,
 				},
 			},
 		},
@@ -204,13 +216,13 @@ func marshalBinary(lines *pos) *ast.FuncDecl {
 					},
 					Type: &ast.UnaryExpr{
 						Op: token.MUL,
-						X:  ast.NewIdent("Type"),
+						X:  ast.NewIdent(typeName),
 					},
 				},
 			},
 		},
 		Name: &ast.Ident{
-			Name: "MarshalBinary",
+			Name: funcName,
 		},
 		Type: &ast.FuncType{
 			Params: &ast.FieldList{},
@@ -250,7 +262,7 @@ func marshalBinary(lines *pos) *ast.FuncDecl {
 					Tok: token.DEFINE,
 					Rhs: []ast.Expr{
 						&ast.CallExpr{
-							Fun: ast.NewIdent("_marshalType"),
+							Fun: ast.NewIdent(marshalName),
 							Args: []ast.Expr{
 								ast.NewIdent("t"),
 								&ast.UnaryExpr{
@@ -273,13 +285,19 @@ func marshalBinary(lines *pos) *ast.FuncDecl {
 	}
 }
 
-func writeTo(lines *pos) *ast.FuncDecl {
+func writeTo(lines *pos, typeName, funcName, marshalName string) *ast.FuncDecl {
+	comment := "// WriteTo implements the io.WriterTo interface."
+
+	if funcName != "WriteTo" {
+		comment = "// " + funcName + " writes data to w until there's no more data to write or when an error occurs.\n//\n// The return value n is the number of bytes written. Any error encountered during the write is also returned."
+	}
+
 	return &ast.FuncDecl{
 		Doc: &ast.CommentGroup{
 			List: []*ast.Comment{
 				{
 					Slash: lines.newLine(),
-					Text:  "// WriteTo implements the io.WriterTo interface.",
+					Text:  comment,
 				},
 			},
 		},
@@ -291,13 +309,13 @@ func writeTo(lines *pos) *ast.FuncDecl {
 					},
 					Type: &ast.UnaryExpr{
 						Op: token.MUL,
-						X:  ast.NewIdent("Type"),
+						X:  ast.NewIdent(typeName),
 					},
 				},
 			},
 		},
 		Name: &ast.Ident{
-			Name: "WriteTo",
+			Name: funcName,
 		},
 		Type: &ast.FuncType{
 			Params: &ast.FieldList{
@@ -375,7 +393,7 @@ func writeTo(lines *pos) *ast.FuncDecl {
 										Tok: token.DEFINE,
 										Rhs: []ast.Expr{
 											&ast.CallExpr{
-												Fun: ast.NewIdent("_marshalType"),
+												Fun: ast.NewIdent(marshalName),
 												Args: []ast.Expr{
 													ast.NewIdent("t"),
 													ast.NewIdent("w"),
@@ -444,7 +462,7 @@ func writeTo(lines *pos) *ast.FuncDecl {
 										Tok: token.DEFINE,
 										Rhs: []ast.Expr{
 											&ast.CallExpr{
-												Fun: ast.NewIdent("_marshalType"),
+												Fun: ast.NewIdent(marshalName),
 												Args: []ast.Expr{
 													ast.NewIdent("t"),
 													ast.NewIdent("w"),
@@ -521,7 +539,7 @@ func writeTo(lines *pos) *ast.FuncDecl {
 														Sel: ast.NewIdent("Err"),
 													},
 													&ast.CallExpr{
-														Fun: ast.NewIdent("_marshalType"),
+														Fun: ast.NewIdent(marshalName),
 														Args: []ast.Expr{
 															ast.NewIdent("t"),
 															ast.NewIdent("w"),
@@ -590,7 +608,7 @@ func writeTo(lines *pos) *ast.FuncDecl {
 														Sel: ast.NewIdent("Err"),
 													},
 													&ast.CallExpr{
-														Fun: ast.NewIdent("_marshalType"),
+														Fun: ast.NewIdent(marshalName),
 														Args: []ast.Expr{
 															ast.NewIdent("t"),
 															ast.NewIdent("w"),
@@ -655,7 +673,7 @@ func writeTo(lines *pos) *ast.FuncDecl {
 							},
 							Args: []ast.Expr{
 								&ast.CallExpr{
-									Fun: ast.NewIdent("_marshalType"),
+									Fun: ast.NewIdent(marshalName),
 									Args: []ast.Expr{
 										ast.NewIdent("t"),
 										&ast.UnaryExpr{
