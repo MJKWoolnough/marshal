@@ -4,7 +4,9 @@ import (
 	"go/ast"
 	"go/format"
 	"go/token"
+	"go/types"
 	"io"
+	"strings"
 )
 
 type pos []int
@@ -16,7 +18,7 @@ func (p *pos) newLine() token.Pos {
 	return token.Pos(l + 1)
 }
 
-func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string) {
+func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string, types ...*types.Named) {
 	fset := token.NewFileSet()
 	lines := pos{0}
 	file := &ast.File{
@@ -35,24 +37,35 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, writer string) 
 		},
 	}
 
-	if assigner != "" {
-		file.Decls = append(file.Decls, assignBinary(&lines, "AType", assigner, "_marshalAType"))
+	for _, typ := range types {
+		typeName := typ.Obj().Name()
+		marshalName := marshalName(typ)
+
+		if assigner != "" {
+			file.Decls = append(file.Decls, assignBinary(&lines, typeName, assigner, marshalName))
+		}
+
+		if marshaler != "" {
+			file.Decls = append(file.Decls, marshalBinary(&lines, typeName, marshaler, marshalName))
+		}
+
+		if writer != "" {
+			file.Decls = append(file.Decls, writeTo(&lines, typeName, writer, marshalName))
+		}
 	}
 
-	if marshaler != "" {
-		file.Decls = append(file.Decls, marshalBinary(&lines, "AType", marshaler, "_marshalAType"))
+	for _, typ := range types {
+		file.Decls = append(file.Decls, marshalFunc(&lines, typ))
 	}
-
-	if writer != "" {
-		file.Decls = append(file.Decls, writeTo(&lines, "AType", writer, "_marshalAType"))
-	}
-
-	file.Decls = append(file.Decls, marshalFunc(&lines, "AType", "_marshalAType"))
 
 	wsfile := fset.AddFile("out.go", 1, len(lines))
 
 	wsfile.SetLines(lines)
 	format.Node(w, fset, file)
+}
+
+func marshalName(typ *types.Named) string {
+	return "_marshal·" + strings.ReplaceAll(strings.ReplaceAll(typ.Obj().Name(), "·", "··"), ".", "·")
 }
 
 func imports(lines *pos, includeStdlib bool) *ast.GenDecl {
@@ -716,7 +729,10 @@ func writeTo(lines *pos, typeName, funcName, marshalName string) *ast.FuncDecl {
 	}
 }
 
-func marshalFunc(lines *pos, typeName, marshalName string) *ast.FuncDecl {
+func marshalFunc(lines *pos, typ *types.Named) *ast.FuncDecl {
+	typeName := typ.Obj().Name()
+	marshalName := marshalName(typ)
+
 	return &ast.FuncDecl{
 		Name: &ast.Ident{
 			Name: marshalName,
