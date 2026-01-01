@@ -811,7 +811,90 @@ func marshalFunc(lines *pos, typ *types.Named) *ast.FuncDecl {
 }
 
 func unmarshalBinary(lines *pos, typeName, funcName, unmarshalName string) *ast.FuncDecl {
-	return nil
+	comment := "// UnmarshalBinary implements the encoding.BinaryUnmarshaler interface."
+
+	if funcName != "UnmarshalBinary" {
+		comment = "// " + funcName + " decodes the receiver from the binary form."
+	}
+
+	return &ast.FuncDecl{
+		Doc: &ast.CommentGroup{
+			List: []*ast.Comment{
+				{
+					Slash: lines.newLine(),
+					Text:  comment,
+				},
+			},
+		},
+		Recv: &ast.FieldList{
+			List: []*ast.Field{
+				{
+					Names: []*ast.Ident{
+						ast.NewIdent("t"),
+					},
+					Type: &ast.UnaryExpr{
+						Op: token.MUL,
+						X:  ast.NewIdent(typeName),
+					},
+				},
+			},
+		},
+		Name: &ast.Ident{
+			Name: funcName,
+		},
+		Type: &ast.FuncType{
+			Params: &ast.FieldList{},
+			Results: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Type: ast.NewIdent("error"),
+					},
+				},
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{
+						ast.NewIdent("eb"),
+					},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.CompositeLit{
+							Type: &ast.SelectorExpr{
+								X:   ast.NewIdent("byteio"),
+								Sel: ast.NewIdent("MemLittleEndian"),
+							},
+						},
+					},
+				},
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{
+						ast.NewIdent("err"),
+					},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.CallExpr{
+							Fun: ast.NewIdent(unmarshalName),
+							Args: []ast.Expr{
+								ast.NewIdent("t"),
+								&ast.UnaryExpr{
+									Op: token.AND,
+									X:  ast.NewIdent("eb"),
+								},
+							},
+						},
+					},
+				},
+				&ast.ReturnStmt{
+					Return: lines.newLine(),
+					Results: []ast.Expr{
+						ast.NewIdent("err"),
+					},
+				},
+			},
+		},
+	}
 }
 
 func readFrom(lines *pos, typeName, funcName, unmarshalName string) *ast.FuncDecl {
