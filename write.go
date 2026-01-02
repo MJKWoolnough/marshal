@@ -21,7 +21,8 @@ func (p *pos) newLine() token.Pos {
 
 type constructor struct {
 	pos
-	types map[*types.Named][2]string
+	types      map[*types.Named][2]string
+	statements []ast.Stmt
 }
 
 func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, typs ...*types.Named) error {
@@ -782,9 +783,36 @@ func (c *constructor) writeTo(typeName, funcName, marshalName string) *ast.FuncD
 	}
 }
 
+func (c *constructor) writeType(name ast.Expr, typ types.Type) {
+	switch t := typ.Underlying().(type) {
+	case *types.Struct:
+		c.writeStruct(name, t)
+	case *types.Array:
+		c.writeArray(name, t)
+	case *types.Slice:
+		c.writeSlice(name, t)
+	case *types.Map:
+		c.writeMap(name, t)
+	case *types.Pointer:
+		c.writePointer(name, t)
+	case *types.Basic:
+		c.writeBasic(name, t)
+	}
+}
+
+func (c *constructor) writeStruct(name ast.Expr, t *types.Struct)   {}
+func (c *constructor) writeArray(name ast.Expr, t *types.Array)     {}
+func (c *constructor) writeSlice(name ast.Expr, t *types.Slice)     {}
+func (c *constructor) writeMap(name ast.Expr, t *types.Map)         {}
+func (c *constructor) writePointer(name ast.Expr, t *types.Pointer) {}
+func (c *constructor) writeBasic(name ast.Expr, t *types.Basic)     {}
+
 func (c *constructor) marshalFunc(typ *types.Named) *ast.FuncDecl {
 	typeName := typ.Obj().Name()
 	marshalName := marshalName(typ)
+	c.statements = nil
+
+	c.writeType(ast.NewIdent("t"), typ)
 
 	return &ast.FuncDecl{
 		Name: &ast.Ident{
@@ -833,13 +861,11 @@ func (c *constructor) marshalFunc(typ *types.Named) *ast.FuncDecl {
 			},
 		},
 		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						ast.NewIdent("nil"),
-					},
+			List: append(c.statements, &ast.ReturnStmt{
+				Results: []ast.Expr{
+					ast.NewIdent("nil"),
 				},
-			},
+			}),
 		},
 	}
 }
@@ -1351,9 +1377,36 @@ func (c *constructor) readFrom(typeName, funcName, unmarshalName string) *ast.Fu
 	}
 }
 
+func (c *constructor) readType(name ast.Expr, typ types.Type) {
+	switch t := typ.Underlying().(type) {
+	case *types.Struct:
+		c.readStruct(name, t)
+	case *types.Array:
+		c.readArray(name, t)
+	case *types.Slice:
+		c.readSlice(name, t)
+	case *types.Map:
+		c.readMap(name, t)
+	case *types.Pointer:
+		c.readPointer(name, t)
+	case *types.Basic:
+		c.readBasic(name, t)
+	}
+}
+
+func (c *constructor) readStruct(name ast.Expr, t *types.Struct)   {}
+func (c *constructor) readArray(name ast.Expr, t *types.Array)     {}
+func (c *constructor) readSlice(name ast.Expr, t *types.Slice)     {}
+func (c *constructor) readMap(name ast.Expr, t *types.Map)         {}
+func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {}
+func (c *constructor) readBasic(name ast.Expr, t *types.Basic)     {}
+
 func (c *constructor) unmarshalFunc(typ *types.Named) *ast.FuncDecl {
 	typeName := typ.Obj().Name()
 	unmarshalName := unmarshalName(typ)
+	c.statements = nil
+
+	c.readType(ast.NewIdent("t"), typ)
 
 	return &ast.FuncDecl{
 		Name: &ast.Ident{
@@ -1402,13 +1455,11 @@ func (c *constructor) unmarshalFunc(typ *types.Named) *ast.FuncDecl {
 			},
 		},
 		Body: &ast.BlockStmt{
-			List: []ast.Stmt{
-				&ast.ReturnStmt{
-					Results: []ast.Expr{
-						ast.NewIdent("nil"),
-					},
+			List: append(c.statements, &ast.ReturnStmt{
+				Results: []ast.Expr{
+					ast.NewIdent("nil"),
 				},
-			},
+			}),
 		},
 	}
 }
