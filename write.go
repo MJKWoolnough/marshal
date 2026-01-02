@@ -783,6 +783,10 @@ func (c *constructor) writeTo(typeName, funcName, marshalName string) *ast.FuncD
 	}
 }
 
+func (c *constructor) addStatement(stmt ast.Stmt) {
+	c.statements = append(c.statements, stmt)
+}
+
 func (c *constructor) writeType(name ast.Expr, typ types.Type) {
 	switch t := typ.Underlying().(type) {
 	case *types.Struct:
@@ -800,19 +804,39 @@ func (c *constructor) writeType(name ast.Expr, typ types.Type) {
 	}
 }
 
-func (c *constructor) writeStruct(name ast.Expr, t *types.Struct)   {}
+func (c *constructor) writeStruct(name ast.Expr, t *types.Struct) {
+	for field := range t.Fields() {
+		if !field.Exported() {
+			continue
+		}
+
+		c.writeType(&ast.SelectorExpr{
+			X:   name,
+			Sel: ast.NewIdent(field.Name()),
+		}, field.Type())
+	}
+}
+
 func (c *constructor) writeArray(name ast.Expr, t *types.Array)     {}
 func (c *constructor) writeSlice(name ast.Expr, t *types.Slice)     {}
 func (c *constructor) writeMap(name ast.Expr, t *types.Map)         {}
 func (c *constructor) writePointer(name ast.Expr, t *types.Pointer) {}
 func (c *constructor) writeBasic(name ast.Expr, t *types.Basic)     {}
 
+func deref(typ types.Type) types.Type {
+	if ptr, ok := typ.(*types.Pointer); ok {
+		return ptr.Elem()
+	}
+
+	return typ
+}
+
 func (c *constructor) marshalFunc(typ *types.Named) *ast.FuncDecl {
 	typeName := typ.Obj().Name()
 	marshalName := marshalName(typ)
 	c.statements = nil
 
-	c.writeType(ast.NewIdent("t"), typ)
+	c.writeType(ast.NewIdent("t"), deref(typ.Underlying()))
 
 	return &ast.FuncDecl{
 		Name: &ast.Ident{
