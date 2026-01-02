@@ -817,11 +817,73 @@ func (c *constructor) writeStruct(name ast.Expr, t *types.Struct) {
 	}
 }
 
+func (c *constructor) addWriter(method string, name ast.Expr) {
+	c.addStatement(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun: &ast.SelectorExpr{
+				X:   ast.NewIdent("w"),
+				Sel: ast.NewIdent(method),
+			},
+			Args: []ast.Expr{name},
+		},
+	})
+}
+
 func (c *constructor) writeArray(name ast.Expr, t *types.Array)     {}
 func (c *constructor) writeSlice(name ast.Expr, t *types.Slice)     {}
 func (c *constructor) writeMap(name ast.Expr, t *types.Map)         {}
 func (c *constructor) writePointer(name ast.Expr, t *types.Pointer) {}
-func (c *constructor) writeBasic(name ast.Expr, t *types.Basic)     {}
+
+func (c *constructor) writeBasic(name ast.Expr, t *types.Basic) {
+	switch t.Kind() {
+	case types.Bool:
+		c.addWriter("WriteBool", name)
+	case types.Int:
+		c.addWriter("WriteInt64", name)
+	case types.Int8:
+		c.addWriter("WriteInt8", name)
+	case types.Int16:
+		c.addWriter("WriteInt16", name)
+	case types.Int32:
+		c.addWriter("WriteInt32", name)
+	case types.Int64:
+		c.addWriter("WriteInt64", name)
+	case types.Uint:
+		c.addWriter("WriteUint64", name)
+	case types.Uint8:
+		c.addWriter("WriteUint8", name)
+	case types.Uint16:
+		c.addWriter("WriteUint16", name)
+	case types.Uint32:
+		c.addWriter("WriteUint32", name)
+	case types.Uint64, types.Uintptr:
+		c.addWriter("WriteUint64", name)
+	case types.Float32:
+		c.addWriter("WriteFloat32", name)
+	case types.Float64:
+		c.addWriter("WriteFloat64", name)
+	case types.Complex64:
+		c.addWriter("WriteFloat32", &ast.CallExpr{
+			Fun:  ast.NewIdent("imag"),
+			Args: []ast.Expr{name},
+		})
+		c.addWriter("WriteFloat32", &ast.CallExpr{
+			Fun:  ast.NewIdent("real"),
+			Args: []ast.Expr{name},
+		})
+	case types.Complex128:
+		c.addWriter("WriteFloat64", &ast.CallExpr{
+			Fun:  ast.NewIdent("imag"),
+			Args: []ast.Expr{name},
+		})
+		c.addWriter("WriteFloat64", &ast.CallExpr{
+			Fun:  ast.NewIdent("real"),
+			Args: []ast.Expr{name},
+		})
+	case types.String:
+		c.addWriter("WriteStringX", name)
+	}
+}
 
 func deref(typ types.Type) types.Type {
 	if ptr, ok := typ.(*types.Pointer); ok {
@@ -886,6 +948,7 @@ func (c *constructor) marshalFunc(typ *types.Named) *ast.FuncDecl {
 		},
 		Body: &ast.BlockStmt{
 			List: append(c.statements, &ast.ReturnStmt{
+				Return: c.newLine(),
 				Results: []ast.Expr{
 					ast.NewIdent("nil"),
 				},
