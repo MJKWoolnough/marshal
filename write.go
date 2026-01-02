@@ -6,6 +6,7 @@ import (
 	"go/token"
 	"go/types"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -18,7 +19,7 @@ func (p *pos) newLine() token.Pos {
 	return token.Pos(l + 1)
 }
 
-func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, writer, reader string, types ...*types.Named) error {
+func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, types ...*types.Named) error {
 	fset := token.NewFileSet()
 	lines := pos{0}
 	file := &ast.File{
@@ -26,7 +27,7 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, wr
 			List: []*ast.Comment{
 				{
 					Slash: lines.newLine(),
-					Text:  "//go:generate go run vimagination.zapto.org/marshal@latest --opts",
+					Text:  "//go:generate go run vimagination.zapto.org/marshal@latest " + encodeOpts(opts),
 				},
 			},
 		},
@@ -77,6 +78,24 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, wr
 
 	wsfile.SetLines(lines)
 	return format.Node(w, fset, file)
+}
+
+func encodeOpts(opts []string) string {
+	var buf []byte
+
+	for n, opt := range opts {
+		if n > 0 {
+			buf = append(buf, ' ')
+		}
+
+		if strings.Contains(opt, " ") {
+			buf = strconv.AppendQuote(buf, opt)
+		} else {
+			buf = append(buf, opt...)
+		}
+	}
+
+	return string(buf)
 }
 
 func marshalName(typ *types.Named) string {
