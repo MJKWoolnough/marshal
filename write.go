@@ -840,7 +840,6 @@ func (c *constructor) writeArray(name ast.Expr, t *types.Array) {
 	d := c.subConstructor()
 
 	d.writeType(ast.NewIdent("e"), t.Elem())
-
 	c.addStatement(&ast.RangeStmt{
 		For:   c.newLine(),
 		Key:   ast.NewIdent("_"),
@@ -857,7 +856,6 @@ func (c *constructor) writeSlice(name ast.Expr, t *types.Slice) {
 	d := c.subConstructor()
 
 	d.writeType(ast.NewIdent("e"), t.Elem())
-
 	c.addWriter("WriteUintX", &ast.CallExpr{
 		Fun: ast.NewIdent("uint64"),
 		Args: []ast.Expr{
@@ -878,7 +876,33 @@ func (c *constructor) writeSlice(name ast.Expr, t *types.Slice) {
 		},
 	})
 }
-func (c *constructor) writeMap(name ast.Expr, t *types.Map)         {}
+
+func (c *constructor) writeMap(name ast.Expr, t *types.Map) {
+	d := c.subConstructor()
+
+	d.writeType(ast.NewIdent("k"), t.Key())
+	d.writeType(ast.NewIdent("k"), t.Elem())
+	c.addWriter("WriteUintX", &ast.CallExpr{
+		Fun: ast.NewIdent("uint64"),
+		Args: []ast.Expr{
+			&ast.CallExpr{
+				Fun:  ast.NewIdent("len"),
+				Args: []ast.Expr{name},
+			},
+		},
+	})
+	c.addStatement(&ast.RangeStmt{
+		For:   c.newLine(),
+		Key:   ast.NewIdent("k"),
+		Value: ast.NewIdent("v"),
+		Tok:   token.DEFINE,
+		X:     name,
+		Body: &ast.BlockStmt{
+			List: d.statements,
+		},
+	})
+}
+
 func (c *constructor) writePointer(name ast.Expr, t *types.Pointer) {}
 
 func (c *constructor) writeBasic(name ast.Expr, t *types.Basic) {
