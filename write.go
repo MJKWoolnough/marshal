@@ -21,10 +21,14 @@ func (p *pos) newLine() token.Pos {
 
 type constructor struct {
 	pos
+	types map[*types.Named][2]string
 }
 
-func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, types ...*types.Named) error {
-	c := constructor{pos: pos{0}}
+func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, typs ...*types.Named) error {
+	c := constructor{
+		pos:   pos{0},
+		types: make(map[*types.Named][2]string),
+	}
 	file := &ast.File{
 		Doc: &ast.CommentGroup{
 			List: []*ast.Comment{
@@ -36,7 +40,7 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, wr
 		},
 		Name:    ast.NewIdent(pkg),
 		Package: c.newLine(),
-		Decls:   c.buildDecls(assigner, marshaler, unmarshaler, writer, reader, types),
+		Decls:   c.buildDecls(assigner, marshaler, unmarshaler, writer, reader, typs),
 	}
 	fset := token.NewFileSet()
 	wsfile := fset.AddFile("out.go", 1, len(c.pos))
@@ -73,6 +77,7 @@ func (c *constructor) buildDecls(assigner, marshaler, unmarshaler, writer, reade
 		typeName := typ.Obj().Name()
 		marshalName := marshalName(typ)
 		unmarshalName := unmarshalName(typ)
+		c.types[typ] = [2]string{marshalName, unmarshalName}
 
 		if assigner != "" {
 			decls = append(decls, c.assignBinary(typeName, assigner, marshalName))
