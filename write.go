@@ -36,47 +36,8 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, wr
 		},
 		Name:    ast.NewIdent(pkg),
 		Package: c.newLine(),
-		Decls: []ast.Decl{
-			c.imports(writer != "" || reader != ""),
-		},
+		Decls:   c.buildDecls(assigner, marshaler, unmarshaler, writer, reader, types),
 	}
-
-	for _, typ := range types {
-		typeName := typ.Obj().Name()
-		marshalName := marshalName(typ)
-		unmarshalName := unmarshalName(typ)
-
-		if assigner != "" {
-			file.Decls = append(file.Decls, c.assignBinary(typeName, assigner, marshalName))
-		}
-
-		if marshaler != "" {
-			file.Decls = append(file.Decls, c.marshalBinary(typeName, marshaler, marshalName))
-		}
-
-		if writer != "" {
-			file.Decls = append(file.Decls, c.writeTo(typeName, writer, marshalName))
-		}
-
-		if unmarshaler != "" {
-			file.Decls = append(file.Decls, c.unmarshalBinary(typeName, unmarshaler, unmarshalName))
-		}
-
-		if reader != "" {
-			file.Decls = append(file.Decls, c.readFrom(typeName, reader, unmarshalName))
-		}
-	}
-
-	for _, typ := range types {
-		if assigner != "" || marshaler != "" || writer != "" {
-			file.Decls = append(file.Decls, c.marshalFunc(typ))
-		}
-
-		if unmarshaler != "" || reader != "" {
-			file.Decls = append(file.Decls, c.unmarshalFunc(typ))
-		}
-	}
-
 	fset := token.NewFileSet()
 	wsfile := fset.AddFile("out.go", 1, len(c.pos))
 
@@ -101,6 +62,50 @@ func encodeOpts(opts []string) string {
 	}
 
 	return string(buf)
+}
+
+func (c *constructor) buildDecls(assigner, marshaler, unmarshaler, writer, reader string, types []*types.Named) []ast.Decl {
+	decls := []ast.Decl{
+		c.imports(writer != "" || reader != ""),
+	}
+
+	for _, typ := range types {
+		typeName := typ.Obj().Name()
+		marshalName := marshalName(typ)
+		unmarshalName := unmarshalName(typ)
+
+		if assigner != "" {
+			decls = append(decls, c.assignBinary(typeName, assigner, marshalName))
+		}
+
+		if marshaler != "" {
+			decls = append(decls, c.marshalBinary(typeName, marshaler, marshalName))
+		}
+
+		if writer != "" {
+			decls = append(decls, c.writeTo(typeName, writer, marshalName))
+		}
+
+		if unmarshaler != "" {
+			decls = append(decls, c.unmarshalBinary(typeName, unmarshaler, unmarshalName))
+		}
+
+		if reader != "" {
+			decls = append(decls, c.readFrom(typeName, reader, unmarshalName))
+		}
+	}
+
+	for _, typ := range types {
+		if assigner != "" || marshaler != "" || writer != "" {
+			decls = append(decls, c.marshalFunc(typ))
+		}
+
+		if unmarshaler != "" || reader != "" {
+			decls = append(decls, c.unmarshalFunc(typ))
+		}
+	}
+
+	return decls
 }
 
 func marshalName(typ *types.Named) string {
