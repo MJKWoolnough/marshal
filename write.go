@@ -829,7 +829,30 @@ func (c *constructor) addWriter(method string, name ast.Expr) {
 	})
 }
 
-func (c *constructor) writeArray(name ast.Expr, t *types.Array)     {}
+func (c *constructor) subConstructor() *constructor {
+	return &constructor{
+		pos:   c.pos,
+		types: c.types,
+	}
+}
+
+func (c *constructor) writeArray(name ast.Expr, t *types.Array) {
+	d := c.subConstructor()
+
+	d.writeType(ast.NewIdent("e"), t.Elem())
+
+	c.addStatement(&ast.RangeStmt{
+		For:   c.newLine(),
+		Key:   ast.NewIdent("_"),
+		Value: ast.NewIdent("e"),
+		Tok:   token.DEFINE,
+		X:     name,
+		Body: &ast.BlockStmt{
+			List: d.statements,
+		},
+	})
+}
+
 func (c *constructor) writeSlice(name ast.Expr, t *types.Slice)     {}
 func (c *constructor) writeMap(name ast.Expr, t *types.Map)         {}
 func (c *constructor) writePointer(name ast.Expr, t *types.Pointer) {}
