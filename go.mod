@@ -7,4 +7,7 @@ require (
 	vimagination.zapto.org/httpreaderat v1.0.0
 )
 
-require vimagination.zapto.org/cache v1.0.1 // indirect
+require (
+	vimagination.zapto.org/cache v1.0.1 // indirect
+	vimagination.zapto.org/gotypes v1.0.0 // indirect
+)
