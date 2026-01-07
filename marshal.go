@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+
+	"vimagination.zapto.org/gotypes"
 )
 
 func main() {
@@ -30,7 +32,7 @@ func run() error {
 		return err
 	}
 
-	pkg, err := ParsePackage(module, ignore...)
+	pkg, err := gotypes.ParsePackage(module, ignore...)
 	if err != nil {
 		return err
 	}
@@ -41,8 +43,16 @@ func run() error {
 	}
 
 	var p processor
+	p.methods = []method{
+		{
+			name:    "WriteTo",
+			args:    []string{"io.Writer"},
+			returns: []string{"int64", "error"},
+		},
+	}
+	p.named = map[string]*NamedType{}
 
-	p.processType(typ.Type())
+	fmt.Println(p.processType(typ.Type()))
 
 	return nil
 }
