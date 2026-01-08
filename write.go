@@ -1661,7 +1661,53 @@ func (c *constructor) readBasic(name ast.Expr, t *types.Basic) {
 	case types.Float64:
 		c.addReader("ReadFloat64", name)
 	case types.Complex64:
+		c.addStatement(&ast.AssignStmt{
+			Lhs: []ast.Expr{name},
+			Tok: token.ASSIGN,
+			Rhs: []ast.Expr{
+				&ast.CallExpr{
+					Fun: ast.NewIdent("complex"),
+					Args: []ast.Expr{
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("r"),
+								Sel: ast.NewIdent("ReadFloat32"),
+							},
+						},
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("r"),
+								Sel: ast.NewIdent("ReadFloat32"),
+							},
+						},
+					},
+				},
+			},
+		})
 	case types.Complex128:
+		c.addStatement(&ast.AssignStmt{
+			Lhs: []ast.Expr{name},
+			Tok: token.ASSIGN,
+			Rhs: []ast.Expr{
+				&ast.CallExpr{
+					Fun: ast.NewIdent("complex"),
+					Args: []ast.Expr{
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("r"),
+								Sel: ast.NewIdent("ReadFloat64"),
+							},
+						},
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("r"),
+								Sel: ast.NewIdent("ReadFloat64"),
+							},
+						},
+					},
+				},
+			},
+		})
 	case types.String:
 		c.addReader("ReadStringX", name)
 	}
