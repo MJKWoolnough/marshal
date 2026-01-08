@@ -959,20 +959,20 @@ func (c *constructor) writeBasic(name ast.Expr, t *types.Basic) {
 		c.addWriter("WriteFloat64", name)
 	case types.Complex64:
 		c.addWriter("WriteFloat32", &ast.CallExpr{
-			Fun:  ast.NewIdent("imag"),
+			Fun:  ast.NewIdent("real"),
 			Args: []ast.Expr{name},
 		})
 		c.addWriter("WriteFloat32", &ast.CallExpr{
-			Fun:  ast.NewIdent("real"),
+			Fun:  ast.NewIdent("imag"),
 			Args: []ast.Expr{name},
 		})
 	case types.Complex128:
 		c.addWriter("WriteFloat64", &ast.CallExpr{
-			Fun:  ast.NewIdent("imag"),
+			Fun:  ast.NewIdent("real"),
 			Args: []ast.Expr{name},
 		})
 		c.addWriter("WriteFloat64", &ast.CallExpr{
-			Fun:  ast.NewIdent("real"),
+			Fun:  ast.NewIdent("imag"),
 			Args: []ast.Expr{name},
 		})
 	case types.String:
