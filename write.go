@@ -1616,7 +1616,10 @@ func (c *constructor) readStruct(name ast.Expr, t *types.Struct) {
 func (c *constructor) readArray(name ast.Expr, t *types.Array) {
 	d := c.subConstructor()
 
-	d.readType(ast.NewIdent("e"), t.Elem())
+	d.readType(&ast.IndexExpr{
+		X:     ast.NewIdent("e"),
+		Index: ast.NewIdent("n"),
+	}, t.Elem())
 	c.addStatement(&ast.RangeStmt{
 		For: c.newLine(),
 		Key: ast.NewIdent("n"),
