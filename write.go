@@ -881,7 +881,7 @@ func (c *constructor) writeMap(name ast.Expr, t *types.Map) {
 	d := c.subConstructor()
 
 	d.writeType(ast.NewIdent("k"), t.Key())
-	d.writeType(ast.NewIdent("k"), t.Elem())
+	d.writeType(ast.NewIdent("v"), t.Elem())
 	c.addWriter("WriteUintX", &ast.CallExpr{
 		Fun: ast.NewIdent("uint64"),
 		Args: []ast.Expr{
