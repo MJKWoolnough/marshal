@@ -1600,7 +1600,19 @@ func (c *constructor) addReader(method string, name ast.Expr) {
 	})
 }
 
-func (c *constructor) readStruct(name ast.Expr, t *types.Struct)   {}
+func (c *constructor) readStruct(name ast.Expr, t *types.Struct) {
+	for field := range t.Fields() {
+		if !field.Exported() {
+			continue
+		}
+
+		c.readType(&ast.SelectorExpr{
+			X:   name,
+			Sel: ast.NewIdent(field.Name()),
+		}, field.Type())
+	}
+}
+
 func (c *constructor) readArray(name ast.Expr, t *types.Array)     {}
 func (c *constructor) readSlice(name ast.Expr, t *types.Slice)     {}
 func (c *constructor) readMap(name ast.Expr, t *types.Map)         {}
