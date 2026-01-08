@@ -1613,7 +1613,21 @@ func (c *constructor) readStruct(name ast.Expr, t *types.Struct) {
 	}
 }
 
-func (c *constructor) readArray(name ast.Expr, t *types.Array)     {}
+func (c *constructor) readArray(name ast.Expr, t *types.Array) {
+	d := c.subConstructor()
+
+	d.readType(ast.NewIdent("e"), t.Elem())
+	c.addStatement(&ast.RangeStmt{
+		For: c.newLine(),
+		Key: ast.NewIdent("n"),
+		Tok: token.DEFINE,
+		X:   name,
+		Body: &ast.BlockStmt{
+			List: d.statements,
+		},
+	})
+}
+
 func (c *constructor) readSlice(name ast.Expr, t *types.Slice)     {}
 func (c *constructor) readMap(name ast.Expr, t *types.Map)         {}
 func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {}
