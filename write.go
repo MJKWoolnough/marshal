@@ -903,7 +903,36 @@ func (c *constructor) writeMap(name ast.Expr, t *types.Map) {
 	})
 }
 
-func (c *constructor) writePointer(name ast.Expr, t *types.Pointer) {}
+func (c *constructor) writePointer(name ast.Expr, t *types.Pointer) {
+	d := c.subConstructor()
+
+	d.writeType(name, t.Elem())
+	c.addStatement(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun: &ast.SelectorExpr{
+				X:   ast.NewIdent("w"),
+				Sel: ast.NewIdent("WriteBool"),
+			},
+			Args: []ast.Expr{
+				&ast.BinaryExpr{
+					X:  name,
+					Op: token.NEQ,
+					Y:  ast.NewIdent("nil"),
+				},
+			},
+		},
+	})
+	c.addStatement(&ast.IfStmt{
+		Cond: &ast.BinaryExpr{
+			X:  name,
+			Op: token.NEQ,
+			Y:  ast.NewIdent("nil"),
+		},
+		Body: &ast.BlockStmt{
+			List: d.statements,
+		},
+	})
+}
 
 func (c *constructor) writeBasic(name ast.Expr, t *types.Basic) {
 	switch t.Kind() {
