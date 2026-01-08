@@ -1617,7 +1617,41 @@ func (c *constructor) readArray(name ast.Expr, t *types.Array)     {}
 func (c *constructor) readSlice(name ast.Expr, t *types.Slice)     {}
 func (c *constructor) readMap(name ast.Expr, t *types.Map)         {}
 func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {}
-func (c *constructor) readBasic(name ast.Expr, t *types.Basic)     {}
+
+func (c *constructor) readBasic(name ast.Expr, t *types.Basic) {
+	switch t.Kind() {
+	case types.Bool:
+		c.addReader("ReadBool", name)
+	case types.Int:
+		c.addReader("ReadInt64", name)
+	case types.Int8:
+		c.addReader("ReadInt8", name)
+	case types.Int16:
+		c.addReader("ReadInt16", name)
+	case types.Int32:
+		c.addReader("ReadInt32", name)
+	case types.Int64:
+		c.addReader("ReadInt64", name)
+	case types.Uint:
+		c.addReader("ReadUint64", name)
+	case types.Uint8:
+		c.addReader("ReadUint8", name)
+	case types.Uint16:
+		c.addReader("ReadUint16", name)
+	case types.Uint32:
+		c.addReader("ReadUint32", name)
+	case types.Uint64, types.Uintptr:
+		c.addReader("ReadUint64", name)
+	case types.Float32:
+		c.addReader("ReadFloat32", name)
+	case types.Float64:
+		c.addReader("ReadFloat64", name)
+	case types.Complex64:
+	case types.Complex128:
+	case types.String:
+		c.addReader("ReadStringX", name)
+	}
+}
 
 func (c *constructor) unmarshalFunc(typ *types.Named) *ast.FuncDecl {
 	typeName := typ.Obj().Name()
