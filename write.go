@@ -1586,11 +1586,11 @@ func (c *constructor) addCall(fun *ast.SelectorExpr, name ast.Expr) {
 }
 
 func (c *constructor) addReader(method string, name ast.Expr) {
-	c.addStatement(&ast.ExprStmt{
-		X: &ast.BinaryExpr{
-			X:  name,
-			Op: token.ASSIGN,
-			Y: &ast.CallExpr{
+	c.addStatement(&ast.AssignStmt{
+		Lhs: []ast.Expr{name},
+		Tok: token.ASSIGN,
+		Rhs: []ast.Expr{
+			&ast.CallExpr{
 				Fun: &ast.SelectorExpr{
 					X:   ast.NewIdent("r"),
 					Sel: ast.NewIdent(method),
