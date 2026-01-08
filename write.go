@@ -818,15 +818,10 @@ func (c *constructor) writeStruct(name ast.Expr, t *types.Struct) {
 }
 
 func (c *constructor) addWriter(method string, name ast.Expr) {
-	c.addStatement(&ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: &ast.SelectorExpr{
-				X:   ast.NewIdent("w"),
-				Sel: ast.NewIdent(method),
-			},
-			Args: []ast.Expr{name},
-		},
-	})
+	c.addCall(&ast.SelectorExpr{
+		X:   ast.NewIdent("w"),
+		Sel: ast.NewIdent(method),
+	}, name)
 }
 
 func (c *constructor) subConstructor() *constructor {
@@ -1579,6 +1574,30 @@ func (c *constructor) readType(name ast.Expr, typ types.Type) {
 	case *types.Basic:
 		c.readBasic(name, t)
 	}
+}
+
+func (c *constructor) addCall(fun *ast.SelectorExpr, name ast.Expr) {
+	c.addStatement(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun:  fun,
+			Args: []ast.Expr{name},
+		},
+	})
+}
+
+func (c *constructor) addReader(method string, name ast.Expr) {
+	c.addStatement(&ast.ExprStmt{
+		X: &ast.BinaryExpr{
+			X:  name,
+			Op: token.ASSIGN,
+			Y: &ast.CallExpr{
+				Fun: &ast.SelectorExpr{
+					X:   ast.NewIdent("r"),
+					Sel: ast.NewIdent(method),
+				},
+			},
+		},
+	})
 }
 
 func (c *constructor) readStruct(name ast.Expr, t *types.Struct)   {}
