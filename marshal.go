@@ -21,8 +21,8 @@ func main() {
 func run() error {
 	var typename, module, output string
 
-	flag.StringVar(&typename, "type", "", "typename to provide marshal/unmarshal functions for")
-	flag.StringVar(&module, "module", "", "path to local module")
+	flag.StringVar(&typename, "t", "", "typename to provide marshal/unmarshal functions for")
+	flag.StringVar(&module, "m", "", "path to local module")
 	flag.StringVar(&output, "o", "", "output file")
 
 	flag.Parse()
