@@ -27,6 +27,8 @@ func run() error {
 		appendBinary    = "AppendBinary"
 		marshalBinary   = "MarshalBinary"
 		unmarshalBinary = "UnmarshalBinary"
+
+		noWriteTo, noReadFrom, noAppendBinary, noMarshalBinary, noUnmarshalBinary bool
 	)
 
 	flag.StringVar(&writeTo, "w", writeTo, "alternate name for the WriteTo method")
@@ -35,11 +37,28 @@ func run() error {
 	flag.StringVar(&marshalBinary, "m", marshalBinary, "alternate name for the MarshalBinary method")
 	flag.StringVar(&unmarshalBinary, "u", unmarshalBinary, "alternate name for the UnmarshalBinary method")
 	flag.StringVar(&output, "o", "", "output file")
+	flag.BoolVar(&noWriteTo, "nn", false, "disable WriteTo method from being generated")
+	flag.BoolVar(&noReadFrom, "nr", false, "disable ReadFrom method from being generated")
+	flag.BoolVar(&noAppendBinary, "na", false, "disable Appendbinary method from being generated")
+	flag.BoolVar(&noMarshalBinary, "nm", false, "disable MarshalBinary method from being generated")
+	flag.BoolVar(&noUnmarshalBinary, "nu", false, "disable UnmarshalBinary method from being generated")
 
 	flag.Parse()
 
 	if output == "" {
 		return ErrNoOutput
+	}
+
+	for disable, v := range map[bool]*string{
+		noWriteTo:         &writeTo,
+		noReadFrom:        &readFrom,
+		noAppendBinary:    &appendBinary,
+		noMarshalBinary:   &marshalBinary,
+		noUnmarshalBinary: &unmarshalBinary,
+	} {
+		if disable {
+			*v = ""
+		}
 	}
 
 	pkg, err := gotypes.ParsePackage(filepath.Dir(output), output)
