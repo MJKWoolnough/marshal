@@ -52,9 +52,11 @@ func run() error {
 		requested = append(requested, named)
 	}
 
+	args := append([]string{"-o", filepath.Base(output)}, flag.Args()...)
+
 	fw := fileWriter{path: output}
 
-	if err := constructFile(&fw, pkg.Name(), "AppendBinary", "MarshalBinary", "UnmarshalBinary", "WriteTo", "ReadFrom", os.Args[1:], requested...); err != nil {
+	if err := constructFile(&fw, pkg.Name(), "AppendBinary", "MarshalBinary", "UnmarshalBinary", "WriteTo", "ReadFrom", args, requested...); err != nil {
 		return err
 	}
 
