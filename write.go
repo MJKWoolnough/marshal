@@ -35,7 +35,7 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, wr
 			List: []*ast.Comment{
 				{
 					Slash: c.newLine(),
-					Text:  "//go:generate go run vimagination.zapto.org/marshal@latest " + encodeOpts(opts),
+					Text:  "//go:generate go run vimagination.zapto.org/unsafe@latest " + encodeOpts(opts),
 				},
 			},
 		},
@@ -115,11 +115,11 @@ func (c *constructor) buildDecls(assigner, marshaler, unmarshaler, writer, reade
 }
 
 func marshalName(typ *types.Named) string {
-	return "_marshal·" + strings.ReplaceAll(strings.ReplaceAll(typ.Obj().Name(), "·", "··"), ".", "·")
+	return "_marshal_" + strings.ReplaceAll(strings.ReplaceAll(typ.Obj().Name(), "_", "__"), ".", "_")
 }
 
 func unmarshalName(typ *types.Named) string {
-	return "_unmarshal·" + strings.ReplaceAll(strings.ReplaceAll(typ.Obj().Name(), "·", "··"), ".", "·")
+	return "_unmarshal_" + strings.ReplaceAll(strings.ReplaceAll(typ.Obj().Name(), "_", "__"), ".", "_")
 }
 
 func (c *constructor) imports(includeStdlib bool) *ast.GenDecl {
