@@ -26,6 +26,10 @@ func run() error {
 
 	flag.Parse()
 
+	if output == "" {
+		return ErrNoOutput
+	}
+
 	pkg, err := gotypes.ParsePackage(filepath.Dir(output), output)
 	if err != nil {
 		return err
@@ -49,4 +53,7 @@ func run() error {
 	return nil
 }
 
-var ErrNotFound = errors.New("typename not found")
+var (
+	ErrNoOutput = errors.New("no output file")
+	ErrNotFound = errors.New("typename not found")
+)
