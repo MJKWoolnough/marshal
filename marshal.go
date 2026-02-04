@@ -20,8 +20,20 @@ func main() {
 }
 
 func run() error {
-	var output string
+	var (
+		output          string
+		writeTo         = "WriteTo"
+		readFrom        = "ReadFrom"
+		appendBinary    = "AppendBinary"
+		marshalBinary   = "MarshalBinary"
+		unmarshalBinary = "UnmarshalBinary"
+	)
 
+	flag.StringVar(&writeTo, "w", writeTo, "alternate name for the WriteTo method")
+	flag.StringVar(&readFrom, "r", readFrom, "alternate name for the ReadFrom method")
+	flag.StringVar(&appendBinary, "a", appendBinary, "alternate name for the AppendBinary method")
+	flag.StringVar(&marshalBinary, "m", marshalBinary, "alternate name for the MarshalBinary method")
+	flag.StringVar(&unmarshalBinary, "u", unmarshalBinary, "alternate name for the UnmarshalBinary method")
 	flag.StringVar(&output, "o", "", "output file")
 
 	flag.Parse()
@@ -55,7 +67,7 @@ func run() error {
 
 	fw := fileWriter{path: output}
 
-	if err := constructFile(&fw, pkg.Name(), "AppendBinary", "MarshalBinary", "UnmarshalBinary", "WriteTo", "ReadFrom", args, requested...); err != nil {
+	if err := constructFile(&fw, pkg.Name(), appendBinary, marshalBinary, unmarshalBinary, writeTo, readFrom, args, requested...); err != nil {
 		return err
 	}
 
