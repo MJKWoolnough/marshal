@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"go/types"
 	"os"
 	"path/filepath"
 
@@ -35,20 +36,23 @@ func run() error {
 		return err
 	}
 
-	typ := pkg.Scope().Lookup(typename)
-	if typ == nil {
-		return ErrNotFound
+	var requested []*types.Named
+
+	for _, typename := range flag.Args() {
+		typ := pkg.Scope().Lookup(typename)
+		if typ == nil {
+			return fmt.Errorf("%w: %s", ErrNotFound, typ)
+		}
+
+		named, ok := typ.Type().(*types.Named)
+		if !ok {
+			return fmt.Errorf("%w: %s", ErrNotAType, typename)
+		}
+
+		requested = append(requested, named)
 	}
 
-	var p processor
-	p.methods = []method{
-		{
-			name:    "WriteTo",
-			args:    []string{"io.Writer"},
-			returns: []string{"int64", "error"},
-		},
-	}
-	p.named = map[string]*NamedType{}
+	constructFile(os.Stdout, pkg.Name(), "AppendBinary", "MarshalBinary", "UnmarshalBinary", "WriteTo", "ReadFrom", os.Args[1:], requested...)
 
 	return nil
 }
@@ -56,4 +60,5 @@ func run() error {
 var (
 	ErrNoOutput = errors.New("no output file")
 	ErrNotFound = errors.New("typename not found")
+	ErrNotAType = errors.New("identifier is not a named type")
 )
