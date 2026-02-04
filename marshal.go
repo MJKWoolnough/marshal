@@ -20,9 +20,8 @@ func main() {
 }
 
 func run() error {
-	var typename, output string
+	var output string
 
-	flag.StringVar(&typename, "t", "", "typename to provide marshal/unmarshal functions for")
 	flag.StringVar(&output, "o", "", "output file")
 
 	flag.Parse()
