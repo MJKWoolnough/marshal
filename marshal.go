@@ -52,9 +52,31 @@ func run() error {
 		requested = append(requested, named)
 	}
 
-	constructFile(os.Stdout, pkg.Name(), "AppendBinary", "MarshalBinary", "UnmarshalBinary", "WriteTo", "ReadFrom", os.Args[1:], requested...)
+	fw := fileWriter{path: output}
 
-	return nil
+	if err := constructFile(&fw, pkg.Name(), "AppendBinary", "MarshalBinary", "UnmarshalBinary", "WriteTo", "ReadFrom", os.Args[1:], requested...); err != nil {
+		return err
+	}
+
+	return fw.Close()
+}
+
+type fileWriter struct {
+	path string
+	*os.File
+}
+
+func (f *fileWriter) Write(p []byte) (int, error) {
+	if f.File == nil {
+		var err error
+
+		f.File, err = os.Create(f.path)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return f.File.Write(p)
 }
 
 var (
