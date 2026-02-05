@@ -1644,7 +1644,7 @@ func (c *constructor) readArray(name ast.Expr, t *types.Array) {
 	d := c.subConstructor()
 
 	d.readType(&ast.IndexExpr{
-		X:     ast.NewIdent("e"),
+		X:     name,
 		Index: ast.NewIdent("n"),
 	}, t.Elem())
 	c.addStatement(&ast.RangeStmt{
