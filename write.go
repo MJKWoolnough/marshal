@@ -1085,7 +1085,16 @@ func (c *constructor) unmarshalBinary(typeName, funcName, unmarshalName string) 
 			Name: funcName,
 		},
 		Type: &ast.FuncType{
-			Params: &ast.FieldList{},
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{ast.NewIdent("b")},
+						Type: &ast.ArrayType{
+							Elt: ast.NewIdent("byte"),
+						},
+					},
+				},
+			},
 			Results: &ast.FieldList{
 				List: []*ast.Field{
 					{
@@ -1102,20 +1111,20 @@ func (c *constructor) unmarshalBinary(typeName, funcName, unmarshalName string) 
 					},
 					Tok: token.DEFINE,
 					Rhs: []ast.Expr{
-						&ast.CompositeLit{
-							Type: &ast.SelectorExpr{
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
 								X:   ast.NewIdent("byteio"),
 								Sel: ast.NewIdent("MemLittleEndian"),
+							},
+							Args: []ast.Expr{
+								ast.NewIdent("b"),
 							},
 						},
 					},
 				},
-				&ast.AssignStmt{
-					Lhs: []ast.Expr{
-						ast.NewIdent("err"),
-					},
-					Tok: token.DEFINE,
-					Rhs: []ast.Expr{
+				&ast.ReturnStmt{
+					Return: c.newLine(),
+					Results: []ast.Expr{
 						&ast.CallExpr{
 							Fun: ast.NewIdent(unmarshalName),
 							Args: []ast.Expr{
@@ -1126,12 +1135,6 @@ func (c *constructor) unmarshalBinary(typeName, funcName, unmarshalName string) 
 								},
 							},
 						},
-					},
-				},
-				&ast.ReturnStmt{
-					Return: c.newLine(),
-					Results: []ast.Expr{
-						ast.NewIdent("err"),
 					},
 				},
 			},
