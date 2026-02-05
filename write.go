@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"go/ast"
 	"go/format"
 	"go/token"
@@ -20,13 +21,35 @@ func (p *pos) newLine() token.Pos {
 }
 
 type constructor struct {
+	pkg *types.Package
 	pos
 	types      map[*types.Named][2]string
 	statements []ast.Stmt
 }
 
-func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, typs ...*types.Named) error {
+func constructFile(w io.Writer, pkgName string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, pkg *types.Package, typenames ...string) error {
+	var typs []*types.Named
+
+	for _, typename := range typenames {
+		typ := pkg.Scope().Lookup(typename)
+		if typ == nil {
+			return fmt.Errorf("%w: %s", ErrNotFound, typ)
+		}
+
+		named, ok := typ.Type().(*types.Named)
+		if !ok {
+			return fmt.Errorf("%w: %s", ErrNotAType, typename)
+		}
+
+		if named.TypeArgs().Len() != 0 {
+			return fmt.Errorf("%w: %s", ErrGenericType, typename)
+		}
+
+		typs = append(typs, named)
+	}
+
 	c := constructor{
+		pkg:   pkg,
 		pos:   pos{0},
 		types: make(map[*types.Named][2]string),
 	}
@@ -39,7 +62,7 @@ func constructFile(w io.Writer, pkg string, assigner, marshaler, unmarshaler, wr
 				},
 			},
 		},
-		Name:    ast.NewIdent(pkg),
+		Name:    ast.NewIdent(pkgName),
 		Package: c.newLine(),
 		Decls:   c.buildDecls(assigner, marshaler, unmarshaler, writer, reader, typs),
 	}
@@ -826,6 +849,7 @@ func (c *constructor) addWriter(method string, name ast.Expr) {
 
 func (c *constructor) subConstructor() *constructor {
 	return &constructor{
+		pkg:   c.pkg,
 		pos:   c.pos,
 		types: c.types,
 	}

@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"go/types"
 	"os"
 	"path/filepath"
 
@@ -67,31 +66,11 @@ func run() error {
 		return err
 	}
 
-	var requested []*types.Named
-
-	for _, typename := range flag.Args() {
-		typ := pkg.Scope().Lookup(typename)
-		if typ == nil {
-			return fmt.Errorf("%w: %s", ErrNotFound, typ)
-		}
-
-		named, ok := typ.Type().(*types.Named)
-		if !ok {
-			return fmt.Errorf("%w: %s", ErrNotAType, typename)
-		}
-
-		if named.TypeArgs().Len() != 0 {
-			return fmt.Errorf("%w: %s", ErrGenericType, typename)
-		}
-
-		requested = append(requested, named)
-	}
-
 	args := append([]string{"-o", filepath.Base(output)}, flag.Args()...)
 
 	fw := fileWriter{path: output}
 
-	if err := constructFile(&fw, pkg.Name(), methods[2].value, methods[3].value, methods[4].value, methods[0].value, methods[1].value, args, requested...); err != nil {
+	if err := constructFile(&fw, pkg.Name(), methods[2].value, methods[3].value, methods[4].value, methods[0].value, methods[1].value, args, pkg, flag.Args()...); err != nil {
 		return err
 	}
 
