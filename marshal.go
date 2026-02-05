@@ -19,29 +19,36 @@ func main() {
 	}
 }
 
+type method struct {
+	flag     string
+	value    string
+	disabled bool
+}
+
+func newMethodFlag(flagName, value string) *method {
+	m := &method{
+		flag:  flagName,
+		value: value,
+	}
+
+	flag.StringVar(&m.value, flagName, value, "alternate name for the "+value+" method")
+	flag.BoolVar(&m.disabled, "n"+flagName, false, "disable "+value+"method")
+
+	return m
+}
+
 func run() error {
-	var (
-		output          string
-		writeTo         = "WriteTo"
-		readFrom        = "ReadFrom"
-		appendBinary    = "AppendBinary"
-		marshalBinary   = "MarshalBinary"
-		unmarshalBinary = "UnmarshalBinary"
+	var output string
 
-		noWriteTo, noReadFrom, noAppendBinary, noMarshalBinary, noUnmarshalBinary bool
-	)
+	methods := []*method{
+		newMethodFlag("w", "WriteTo"),
+		newMethodFlag("r", "ReadFrom"),
+		newMethodFlag("a", "AppendBinary"),
+		newMethodFlag("m", "MarshalBinary"),
+		newMethodFlag("u", "UnmarshalBinary"),
+	}
 
-	flag.StringVar(&writeTo, "w", writeTo, "alternate name for the WriteTo method")
-	flag.StringVar(&readFrom, "r", readFrom, "alternate name for the ReadFrom method")
-	flag.StringVar(&appendBinary, "a", appendBinary, "alternate name for the AppendBinary method")
-	flag.StringVar(&marshalBinary, "m", marshalBinary, "alternate name for the MarshalBinary method")
-	flag.StringVar(&unmarshalBinary, "u", unmarshalBinary, "alternate name for the UnmarshalBinary method")
 	flag.StringVar(&output, "o", "", "output file")
-	flag.BoolVar(&noWriteTo, "nn", false, "disable WriteTo method from being generated")
-	flag.BoolVar(&noReadFrom, "nr", false, "disable ReadFrom method from being generated")
-	flag.BoolVar(&noAppendBinary, "na", false, "disable Appendbinary method from being generated")
-	flag.BoolVar(&noMarshalBinary, "nm", false, "disable MarshalBinary method from being generated")
-	flag.BoolVar(&noUnmarshalBinary, "nu", false, "disable UnmarshalBinary method from being generated")
 
 	flag.Parse()
 
@@ -49,15 +56,9 @@ func run() error {
 		return ErrNoOutput
 	}
 
-	for disable, v := range map[bool]*string{
-		noWriteTo:         &writeTo,
-		noReadFrom:        &readFrom,
-		noAppendBinary:    &appendBinary,
-		noMarshalBinary:   &marshalBinary,
-		noUnmarshalBinary: &unmarshalBinary,
-	} {
-		if disable {
-			*v = ""
+	for _, m := range methods {
+		if m.disabled {
+			m.value = ""
 		}
 	}
 
@@ -86,7 +87,7 @@ func run() error {
 
 	fw := fileWriter{path: output}
 
-	if err := constructFile(&fw, pkg.Name(), appendBinary, marshalBinary, unmarshalBinary, writeTo, readFrom, args, requested...); err != nil {
+	if err := constructFile(&fw, pkg.Name(), methods[2].value, methods[3].value, methods[4].value, methods[0].value, methods[1].value, args, requested...); err != nil {
 		return err
 	}
 
