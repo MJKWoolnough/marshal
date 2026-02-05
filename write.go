@@ -1664,13 +1664,10 @@ func (c *constructor) readMap(name ast.Expr, t *types.Map)     {}
 func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
 	d := c.subConstructor()
 
-	d.addStatement(&ast.AssignStmt{
-		Lhs: []ast.Expr{name},
-		Tok: token.ASSIGN,
-		Rhs: []ast.Expr{
-			c.new(t.Elem()),
-		},
-	})
+	for _, stmt := range c.new(name, t.Elem()) {
+		d.addStatement(stmt)
+	}
+
 	d.readType(name, t.Elem())
 	c.addStatement(&ast.IfStmt{
 		Cond: &ast.CallExpr{
@@ -1685,9 +1682,71 @@ func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
 	})
 }
 
-func (c *constructor) new(t types.Type) *ast.CallExpr {
-	return &ast.CallExpr{
-		Fun: ast.NewIdent("new"),
+func (c *constructor) new(name ast.Expr, t types.Type) []ast.Stmt {
+	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg) {
+		var ident ast.Expr
+
+		if named.Obj().Pkg() == c.pkg {
+			ident = ast.NewIdent(named.Obj().Name())
+		} else {
+			ident = &ast.SelectorExpr{
+				X:   ast.NewIdent(named.Obj().Pkg().Name()),
+				Sel: ast.NewIdent(named.Obj().Name()),
+			}
+		}
+
+		return []ast.Stmt{
+			&ast.AssignStmt{
+				Lhs: []ast.Expr{name},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{&ast.CallExpr{
+					Fun:  ast.NewIdent("new"),
+					Args: []ast.Expr{ident},
+				}},
+			},
+		}
+	}
+
+	return []ast.Stmt{
+		&ast.AssignStmt{
+			Lhs: []ast.Expr{ast.NewIdent("x")},
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{
+				&ast.CallExpr{
+					Fun: &ast.SelectorExpr{
+						X: &ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("reflect"),
+								Sel: ast.NewIdent("ValueOf"),
+							},
+							Args: []ast.Expr{name},
+						},
+						Sel: ast.NewIdent("Elem"),
+					},
+				},
+			},
+		},
+		&ast.ExprStmt{
+			X: &ast.CallExpr{
+				Fun: &ast.SelectorExpr{
+					X:   ast.NewIdent("x"),
+					Sel: ast.NewIdent("Set"),
+				},
+				Args: []ast.Expr{
+					&ast.CallExpr{
+						Fun: &ast.SelectorExpr{
+							X: &ast.CallExpr{
+								Fun: &ast.SelectorExpr{
+									X:   ast.NewIdent("x"),
+									Sel: ast.NewIdent("Type"),
+								},
+							},
+							Sel: ast.NewIdent("Elem"),
+						},
+					},
+				},
+			},
+		},
 	}
 }
 
