@@ -1658,8 +1658,34 @@ func (c *constructor) readArray(name ast.Expr, t *types.Array) {
 	})
 }
 
-func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {}
-func (c *constructor) readMap(name ast.Expr, t *types.Map)     {}
+func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
+	d := c.subConstructor()
+
+	d.readType(&ast.IndexExpr{
+		X:     name,
+		Index: ast.NewIdent("n"),
+	}, t.Elem())
+
+	for _, stmt := range c.make(name, t.Elem()) {
+		c.addStatement(stmt)
+	}
+
+	c.addStatement(&ast.RangeStmt{
+		For: c.newLine(),
+		Key: ast.NewIdent("n"),
+		Tok: token.DEFINE,
+		X:   name,
+		Body: &ast.BlockStmt{
+			List: d.statements,
+		},
+	})
+}
+
+func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
+	return nil
+}
+
+func (c *constructor) readMap(name ast.Expr, t *types.Map) {}
 
 func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
 	d := c.subConstructor()
