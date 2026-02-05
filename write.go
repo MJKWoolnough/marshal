@@ -1843,7 +1843,12 @@ func (c *constructor) new(name ast.Expr, t types.Type) []ast.Stmt {
 								X:   ast.NewIdent("reflect"),
 								Sel: ast.NewIdent("ValueOf"),
 							},
-							Args: []ast.Expr{name},
+							Args: []ast.Expr{
+								&ast.UnaryExpr{
+									Op: token.AND,
+									X:  name,
+								},
+							},
 						},
 						Sel: ast.NewIdent("Elem"),
 					},
@@ -1859,13 +1864,21 @@ func (c *constructor) new(name ast.Expr, t types.Type) []ast.Stmt {
 				Args: []ast.Expr{
 					&ast.CallExpr{
 						Fun: &ast.SelectorExpr{
-							X: &ast.CallExpr{
+							X:   ast.NewIdent("reflect"),
+							Sel: ast.NewIdent("New"),
+						},
+						Args: []ast.Expr{
+							&ast.CallExpr{
 								Fun: &ast.SelectorExpr{
-									X:   ast.NewIdent("x"),
-									Sel: ast.NewIdent("Type"),
+									X: &ast.CallExpr{
+										Fun: &ast.SelectorExpr{
+											X:   ast.NewIdent("x"),
+											Sel: ast.NewIdent("Type"),
+										},
+									},
+									Sel: ast.NewIdent("Elem"),
 								},
 							},
-							Sel: ast.NewIdent("Elem"),
 						},
 					},
 				},
