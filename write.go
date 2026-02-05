@@ -1682,7 +1682,105 @@ func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
 }
 
 func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
-	return nil
+	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg) {
+		var ident ast.Expr
+
+		if named.Obj().Pkg() == c.pkg {
+			ident = ast.NewIdent(named.Obj().Name())
+		} else {
+			ident = &ast.SelectorExpr{
+				X:   ast.NewIdent(named.Obj().Pkg().Name()),
+				Sel: ast.NewIdent(named.Obj().Name()),
+			}
+		}
+
+		return []ast.Stmt{
+			&ast.AssignStmt{
+				Lhs: []ast.Expr{name},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{&ast.CallExpr{
+					Fun: ast.NewIdent("make"),
+					Args: []ast.Expr{
+						ident,
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("r"),
+								Sel: ast.NewIdent("ReadUintX"),
+							},
+						},
+					},
+				}},
+			},
+		}
+	}
+
+	return []ast.Stmt{
+		&ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{ast.NewIdent("l")},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("r"),
+								Sel: ast.NewIdent("ReadUint64"),
+							},
+						},
+					},
+				},
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{ast.NewIdent("x")},
+					Tok: token.DEFINE,
+					Rhs: []ast.Expr{
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X: &ast.CallExpr{
+									Fun: &ast.SelectorExpr{
+										X:   ast.NewIdent("reflect"),
+										Sel: ast.NewIdent("ValueOf"),
+									},
+									Args: []ast.Expr{
+										&ast.UnaryExpr{
+											Op: token.AND,
+											X:  name,
+										},
+									},
+								},
+								Sel: ast.NewIdent("Elem"),
+							},
+						},
+					},
+				},
+				&ast.ExprStmt{
+					X: &ast.CallExpr{
+						Fun: &ast.SelectorExpr{
+							X:   ast.NewIdent("x"),
+							Sel: ast.NewIdent("Set"),
+						},
+						Args: []ast.Expr{
+							&ast.CallExpr{
+								Fun: &ast.SelectorExpr{
+									X:   ast.NewIdent("reflect"),
+									Sel: ast.NewIdent("MakeSlice"),
+								},
+								Args: []ast.Expr{
+									&ast.CallExpr{
+										Fun: &ast.SelectorExpr{
+											X:   ast.NewIdent("x"),
+											Sel: ast.NewIdent("Type"),
+										},
+									},
+									ast.NewIdent("l"),
+									ast.NewIdent("l"),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
 }
 
 func (c *constructor) readMap(name ast.Expr, t *types.Map) {}
