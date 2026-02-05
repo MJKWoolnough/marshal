@@ -1634,9 +1634,38 @@ func (c *constructor) readArray(name ast.Expr, t *types.Array) {
 	})
 }
 
-func (c *constructor) readSlice(name ast.Expr, t *types.Slice)     {}
-func (c *constructor) readMap(name ast.Expr, t *types.Map)         {}
-func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {}
+func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {}
+func (c *constructor) readMap(name ast.Expr, t *types.Map)     {}
+
+func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
+	d := c.subConstructor()
+
+	d.addStatement(&ast.AssignStmt{
+		Lhs: []ast.Expr{name},
+		Tok: token.ASSIGN,
+		Rhs: []ast.Expr{
+			c.new(t.Elem()),
+		},
+	})
+	d.readType(name, t.Elem())
+	c.addStatement(&ast.IfStmt{
+		Cond: &ast.CallExpr{
+			Fun: &ast.SelectorExpr{
+				X:   ast.NewIdent("r"),
+				Sel: ast.NewIdent("ReadBool"),
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: d.statements,
+		},
+	})
+}
+
+func (c *constructor) new(t types.Type) *ast.CallExpr {
+	return &ast.CallExpr{
+		Fun: ast.NewIdent("new"),
+	}
+}
 
 func (c *constructor) readBasic(name ast.Expr, t *types.Basic) {
 	switch t.Kind() {
