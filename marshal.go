@@ -80,6 +80,10 @@ func run() error {
 			return fmt.Errorf("%w: %s", ErrNotAType, typename)
 		}
 
+		if named.TypeArgs().Len() != 0 {
+			return fmt.Errorf("%w: %s", ErrGenericType, typename)
+		}
+
 		requested = append(requested, named)
 	}
 
@@ -113,7 +117,8 @@ func (f *fileWriter) Write(p []byte) (int, error) {
 }
 
 var (
-	ErrNoOutput = errors.New("no output file")
-	ErrNotFound = errors.New("typename not found")
-	ErrNotAType = errors.New("identifier is not a named type")
+	ErrNoOutput    = errors.New("no output file")
+	ErrNotFound    = errors.New("typename not found")
+	ErrNotAType    = errors.New("identifier is not a named type")
+	ErrGenericType = errors.New("generic types are currently unsupported")
 )
