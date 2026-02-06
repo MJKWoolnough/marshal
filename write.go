@@ -23,9 +23,9 @@ func (p *pos) newLine() token.Pos {
 type constructor struct {
 	pkg *types.Package
 	pos
-	types      map[*types.Named][2]string
-	statements []ast.Stmt
-	needPtr    bool
+	types              map[*types.Named][2]string
+	statements         []ast.Stmt
+	needPtr, needSlice bool
 }
 
 func constructFile(w io.Writer, pkgName string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, pkg *types.Package, typenames ...string) error {
@@ -137,6 +137,10 @@ func (c *constructor) buildDecls(assigner, marshaler, unmarshaler, writer, reade
 
 	if c.needPtr {
 		decls = append(decls, newFunc())
+	}
+
+	if c.needSlice {
+		decls = append(decls, makeSlice())
 	}
 
 	return decls
@@ -1653,96 +1657,70 @@ func (c *constructor) readArray(name ast.Expr, t *types.Array) {
 }
 
 func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
-	for _, stmt := range c.makeSlice(name, t.Elem()) {
-		c.addStatement(stmt)
-	}
+	c.needSlice = true
 
+	c.addStatement(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun: ast.NewIdent("_make_slice"),
+			Args: []ast.Expr{
+				&ast.UnaryExpr{
+					Op: token.AND,
+					X:  name,
+				},
+				&ast.CallExpr{
+					Fun: &ast.SelectorExpr{
+						X:   ast.NewIdent("r"),
+						Sel: ast.NewIdent("ReadUintX"),
+					},
+				},
+			},
+		},
+	})
 	c.readArray(name, types.NewArray(t.Elem(), 0))
 }
 
-func (c *constructor) makeSlice(name ast.Expr, t types.Type) []ast.Stmt {
-	if name := c.accessibleIdent(t); name != nil {
-		return []ast.Stmt{
-			&ast.AssignStmt{
-				Lhs: []ast.Expr{name},
-				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{&ast.CallExpr{
-					Fun: ast.NewIdent("make"),
-					Args: []ast.Expr{
-						&ast.ArrayType{
-							Elt: name,
-						},
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("r"),
-								Sel: ast.NewIdent("ReadUintX"),
+func makeSlice() *ast.FuncDecl {
+	return &ast.FuncDecl{
+		Name: ast.NewIdent("_make_slice"),
+		Type: &ast.FuncType{
+			TypeParams: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{ast.NewIdent("T")},
+						Type:  ast.NewIdent("any"),
+					},
+				},
+			},
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{ast.NewIdent("ptr")},
+						Type: &ast.UnaryExpr{
+							Op: token.MUL,
+							X: &ast.ArrayType{
+								Elt: ast.NewIdent("T"),
 							},
 						},
 					},
-				}},
+				},
 			},
-		}
-	}
-
-	return []ast.Stmt{
-		&ast.BlockStmt{
+		},
+		Body: &ast.BlockStmt{
 			List: []ast.Stmt{
 				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("l")},
-					Tok: token.DEFINE,
-					Rhs: []ast.Expr{
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("r"),
-								Sel: ast.NewIdent("ReadUint64"),
-							},
+					Lhs: []ast.Expr{
+						&ast.UnaryExpr{
+							Op: token.MUL,
+							X:  ast.NewIdent("ptr"),
 						},
 					},
-				},
-				&ast.AssignStmt{
-					Lhs: []ast.Expr{ast.NewIdent("x")},
-					Tok: token.DEFINE,
+					Tok: token.ASSIGN,
 					Rhs: []ast.Expr{
 						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X: &ast.CallExpr{
-									Fun: &ast.SelectorExpr{
-										X:   ast.NewIdent("reflect"),
-										Sel: ast.NewIdent("ValueOf"),
-									},
-									Args: []ast.Expr{
-										&ast.UnaryExpr{
-											Op: token.AND,
-											X:  name,
-										},
-									},
-								},
-								Sel: ast.NewIdent("Elem"),
-							},
-						},
-					},
-				},
-				&ast.ExprStmt{
-					X: &ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("x"),
-							Sel: ast.NewIdent("Set"),
-						},
-						Args: []ast.Expr{
-							&ast.CallExpr{
-								Fun: &ast.SelectorExpr{
-									X:   ast.NewIdent("reflect"),
-									Sel: ast.NewIdent("MakeSlice"),
-								},
-								Args: []ast.Expr{
-									&ast.CallExpr{
-										Fun: &ast.SelectorExpr{
-											X:   ast.NewIdent("x"),
-											Sel: ast.NewIdent("Type"),
-										},
-									},
-									ast.NewIdent("l"),
-									ast.NewIdent("l"),
+							Fun: ast.NewIdent("make"),
+							Args: []ast.Expr{
+								&ast.ArrayType{
+									Elt: ast.NewIdent("T"),
 								},
 							},
 						},
