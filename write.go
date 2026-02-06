@@ -1656,18 +1656,7 @@ func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
 }
 
 func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
-	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil) {
-		var ident ast.Expr
-
-		if named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil {
-			ident = ast.NewIdent(named.Obj().Name())
-		} else {
-			ident = &ast.SelectorExpr{
-				X:   ast.NewIdent(named.Obj().Pkg().Name()),
-				Sel: ast.NewIdent(named.Obj().Name()),
-			}
-		}
-
+	if name := c.accessibleIdent(t); name != nil {
 		return []ast.Stmt{
 			&ast.AssignStmt{
 				Lhs: []ast.Expr{name},
@@ -1676,28 +1665,7 @@ func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
 					Fun: ast.NewIdent("make"),
 					Args: []ast.Expr{
 						&ast.ArrayType{
-							Elt: ident,
-						},
-						&ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("r"),
-								Sel: ast.NewIdent("ReadUintX"),
-							},
-						},
-					},
-				}},
-			},
-		}
-	} else if basic, ok := t.Underlying().(*types.Basic); ok {
-		return []ast.Stmt{
-			&ast.AssignStmt{
-				Lhs: []ast.Expr{name},
-				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{&ast.CallExpr{
-					Fun: ast.NewIdent("make"),
-					Args: []ast.Expr{
-						&ast.ArrayType{
-							Elt: ast.NewIdent(basic.Name()),
+							Elt: name,
 						},
 						&ast.CallExpr{
 							Fun: &ast.SelectorExpr{
@@ -1804,25 +1772,14 @@ func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
 }
 
 func (c *constructor) new(name ast.Expr, t types.Type) []ast.Stmt {
-	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil) {
-		var ident ast.Expr
-
-		if named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil {
-			ident = ast.NewIdent(named.Obj().Name())
-		} else {
-			ident = &ast.SelectorExpr{
-				X:   ast.NewIdent(named.Obj().Pkg().Name()),
-				Sel: ast.NewIdent(named.Obj().Name()),
-			}
-		}
-
+	if name := c.accessibleIdent(t); name != nil {
 		return []ast.Stmt{
 			&ast.AssignStmt{
 				Lhs: []ast.Expr{name},
 				Tok: token.ASSIGN,
 				Rhs: []ast.Expr{&ast.CallExpr{
 					Fun:  ast.NewIdent("new"),
-					Args: []ast.Expr{ident},
+					Args: []ast.Expr{name},
 				}},
 			},
 		}
@@ -1882,6 +1839,23 @@ func (c *constructor) new(name ast.Expr, t types.Type) []ast.Stmt {
 			},
 		},
 	}
+}
+
+func (c *constructor) accessibleIdent(t types.Type) ast.Expr {
+	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil) {
+		if named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil {
+			return ast.NewIdent(named.Obj().Name())
+		}
+
+		return &ast.SelectorExpr{
+			X:   ast.NewIdent(named.Obj().Pkg().Name()),
+			Sel: ast.NewIdent(named.Obj().Name()),
+		}
+	} else if basic, ok := t.Underlying().(*types.Basic); ok {
+		return ast.NewIdent(basic.Name())
+	}
+
+	return nil
 }
 
 func (c *constructor) readBasic(name ast.Expr, t *types.Basic) {
