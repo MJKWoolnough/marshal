@@ -23,9 +23,9 @@ func (p *pos) newLine() token.Pos {
 type constructor struct {
 	pkg *types.Package
 	pos
-	types              map[*types.Named][2]string
-	statements         []ast.Stmt
-	needPtr, needSlice bool
+	types                       map[*types.Named][2]string
+	statements                  []ast.Stmt
+	needPtr, needSlice, needMap bool
 }
 
 func constructFile(w io.Writer, pkgName string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, pkg *types.Package, typenames ...string) error {
@@ -141,6 +141,10 @@ func (c *constructor) buildDecls(assigner, marshaler, unmarshaler, writer, reade
 
 	if c.needSlice {
 		decls = append(decls, makeSlice())
+	}
+
+	if c.needMap {
+		decls = append(decls, makeMap()...)
 	}
 
 	return decls
@@ -1731,7 +1735,136 @@ func makeSlice() *ast.FuncDecl {
 	}
 }
 
-func (c *constructor) readMap(name ast.Expr, t *types.Map) {}
+func (c *constructor) readMap(name ast.Expr, t *types.Map) {
+	c.needMap = true
+}
+
+func makeMap() []ast.Decl {
+	return []ast.Decl{
+		&ast.FuncDecl{
+			Name: ast.NewIdent("_make_map"),
+			Type: &ast.FuncType{
+				TypeParams: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Names: []*ast.Ident{ast.NewIdent("K")},
+							Type:  ast.NewIdent("comparable"),
+						},
+						{
+							Names: []*ast.Ident{ast.NewIdent("V")},
+							Type:  ast.NewIdent("any"),
+						},
+					},
+				},
+				Params: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Names: []*ast.Ident{ast.NewIdent("ptr")},
+							Type: &ast.UnaryExpr{
+								Op: token.MUL,
+								X: &ast.MapType{
+									Key:   ast.NewIdent("K"),
+									Value: ast.NewIdent("V"),
+								},
+							},
+						},
+					},
+				},
+			},
+			Body: &ast.BlockStmt{
+				List: []ast.Stmt{
+					&ast.AssignStmt{
+						Lhs: []ast.Expr{
+							&ast.UnaryExpr{
+								Op: token.MUL,
+								X:  ast.NewIdent("ptr"),
+							},
+						},
+						Tok: token.ASSIGN,
+						Rhs: []ast.Expr{
+							&ast.CallExpr{
+								Fun: ast.NewIdent("make"),
+								Args: []ast.Expr{
+									&ast.MapType{
+										Key:   ast.NewIdent("K"),
+										Value: ast.NewIdent("V"),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		&ast.FuncDecl{
+			Name: ast.NewIdent("_map_key_value"),
+			Type: &ast.FuncType{
+				TypeParams: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Names: []*ast.Ident{ast.NewIdent("K")},
+							Type:  ast.NewIdent("comparable"),
+						},
+						{
+							Names: []*ast.Ident{ast.NewIdent("V")},
+							Type:  ast.NewIdent("any"),
+						},
+					},
+				},
+				Params: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Names: []*ast.Ident{ast.NewIdent("_")},
+							Type: &ast.MapType{
+								Key:   ast.NewIdent("K"),
+								Value: ast.NewIdent("V"),
+							},
+						},
+					},
+				},
+				Results: &ast.FieldList{
+					List: []*ast.Field{
+						{
+							Type: ast.NewIdent("K"),
+						},
+						{
+							Type: ast.NewIdent("V"),
+						},
+					},
+				},
+			},
+			Body: &ast.BlockStmt{
+				List: []ast.Stmt{
+					&ast.DeclStmt{
+						Decl: &ast.GenDecl{
+							Tok: token.VAR,
+							Specs: []ast.Spec{
+								&ast.ValueSpec{
+									Names: []*ast.Ident{
+										ast.NewIdent("k"),
+									},
+									Type: ast.NewIdent("K"),
+								},
+								&ast.ValueSpec{
+									Names: []*ast.Ident{
+										ast.NewIdent("v"),
+									},
+									Type: ast.NewIdent("V"),
+								},
+							},
+						},
+					},
+					&ast.ReturnStmt{
+						Results: []ast.Expr{
+							ast.NewIdent("k"),
+							ast.NewIdent("v"),
+						},
+					},
+				},
+			},
+		},
+	}
+}
 
 func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
 	c.needPtr = true
