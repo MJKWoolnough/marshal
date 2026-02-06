@@ -1648,14 +1648,14 @@ func (c *constructor) readArray(name ast.Expr, t *types.Array) {
 }
 
 func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
-	for _, stmt := range c.make(name, t.Elem()) {
+	for _, stmt := range c.makeSlice(name, t.Elem()) {
 		c.addStatement(stmt)
 	}
 
 	c.readArray(name, types.NewArray(t.Elem(), 0))
 }
 
-func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
+func (c *constructor) makeSlice(name ast.Expr, t types.Type) []ast.Stmt {
 	if name := c.accessibleIdent(t); name != nil {
 		return []ast.Stmt{
 			&ast.AssignStmt{
