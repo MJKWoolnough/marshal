@@ -25,6 +25,7 @@ type constructor struct {
 	pos
 	types      map[*types.Named][2]string
 	statements []ast.Stmt
+	needPtr    bool
 }
 
 func constructFile(w io.Writer, pkgName string, assigner, marshaler, unmarshaler, writer, reader string, opts []string, pkg *types.Package, typenames ...string) error {
@@ -132,6 +133,10 @@ func (c *constructor) buildDecls(assigner, marshaler, unmarshaler, writer, reade
 		if unmarshaler != "" || reader != "" {
 			decls = append(decls, c.unmarshalFunc(typ))
 		}
+	}
+
+	if c.needPtr {
+		decls = append(decls, newFunc())
 	}
 
 	return decls
@@ -1751,12 +1756,21 @@ func (c *constructor) makeSlice(name ast.Expr, t types.Type) []ast.Stmt {
 func (c *constructor) readMap(name ast.Expr, t *types.Map) {}
 
 func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
+	c.needPtr = true
+
 	d := c.subConstructor()
 
-	for _, stmt := range c.new(name, t.Elem()) {
-		d.addStatement(stmt)
-	}
-
+	d.addStatement(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun: ast.NewIdent("_new"),
+			Args: []ast.Expr{
+				&ast.UnaryExpr{
+					Op: token.AND,
+					X:  name,
+				},
+			},
+		},
+	})
 	d.readType(name, t.Elem())
 	c.addStatement(&ast.IfStmt{
 		Cond: &ast.CallExpr{
@@ -1771,67 +1785,48 @@ func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
 	})
 }
 
-func (c *constructor) new(name ast.Expr, t types.Type) []ast.Stmt {
-	if name := c.accessibleIdent(t); name != nil {
-		return []ast.Stmt{
-			&ast.AssignStmt{
-				Lhs: []ast.Expr{name},
-				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{&ast.CallExpr{
-					Fun:  ast.NewIdent("new"),
-					Args: []ast.Expr{name},
-				}},
+func newFunc() *ast.FuncDecl {
+	return &ast.FuncDecl{
+		Name: ast.NewIdent("_new"),
+		Type: &ast.FuncType{
+			TypeParams: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{ast.NewIdent("T")},
+						Type:  ast.NewIdent("any"),
+					},
+				},
 			},
-		}
-	}
-
-	return []ast.Stmt{
-		&ast.AssignStmt{
-			Lhs: []ast.Expr{ast.NewIdent("x")},
-			Tok: token.DEFINE,
-			Rhs: []ast.Expr{
-				&ast.CallExpr{
-					Fun: &ast.SelectorExpr{
-						X: &ast.CallExpr{
-							Fun: &ast.SelectorExpr{
-								X:   ast.NewIdent("reflect"),
-								Sel: ast.NewIdent("ValueOf"),
-							},
-							Args: []ast.Expr{
-								&ast.UnaryExpr{
-									Op: token.AND,
-									X:  name,
-								},
+			Params: &ast.FieldList{
+				List: []*ast.Field{
+					{
+						Names: []*ast.Ident{ast.NewIdent("ptr")},
+						Type: &ast.UnaryExpr{
+							Op: token.MUL,
+							X: &ast.UnaryExpr{
+								Op: token.MUL,
+								X:  ast.NewIdent("T"),
 							},
 						},
-						Sel: ast.NewIdent("Elem"),
 					},
 				},
 			},
 		},
-		&ast.ExprStmt{
-			X: &ast.CallExpr{
-				Fun: &ast.SelectorExpr{
-					X:   ast.NewIdent("x"),
-					Sel: ast.NewIdent("Set"),
-				},
-				Args: []ast.Expr{
-					&ast.CallExpr{
-						Fun: &ast.SelectorExpr{
-							X:   ast.NewIdent("reflect"),
-							Sel: ast.NewIdent("New"),
+		Body: &ast.BlockStmt{
+			List: []ast.Stmt{
+				&ast.AssignStmt{
+					Lhs: []ast.Expr{
+						&ast.UnaryExpr{
+							Op: token.MUL,
+							X:  ast.NewIdent("ptr"),
 						},
-						Args: []ast.Expr{
-							&ast.CallExpr{
-								Fun: &ast.SelectorExpr{
-									X: &ast.CallExpr{
-										Fun: &ast.SelectorExpr{
-											X:   ast.NewIdent("x"),
-											Sel: ast.NewIdent("Type"),
-										},
-									},
-									Sel: ast.NewIdent("Elem"),
-								},
+					},
+					Tok: token.ASSIGN,
+					Rhs: []ast.Expr{
+						&ast.CallExpr{
+							Fun: ast.NewIdent("new"),
+							Args: []ast.Expr{
+								ast.NewIdent("T"),
 							},
 						},
 					},
