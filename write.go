@@ -1714,6 +1714,27 @@ func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
 				}},
 			},
 		}
+	} else if basic, ok := t.Underlying().(*types.Basic); ok {
+		return []ast.Stmt{
+			&ast.AssignStmt{
+				Lhs: []ast.Expr{name},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{&ast.CallExpr{
+					Fun: ast.NewIdent("make"),
+					Args: []ast.Expr{
+						&ast.ArrayType{
+							Elt: ast.NewIdent(basic.Name()),
+						},
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("r"),
+								Sel: ast.NewIdent("ReadUintX"),
+							},
+						},
+					},
+				}},
+			},
+		}
 	}
 
 	return []ast.Stmt{
