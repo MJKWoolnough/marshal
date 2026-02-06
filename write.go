@@ -1682,10 +1682,10 @@ func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
 }
 
 func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
-	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg) {
+	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil) {
 		var ident ast.Expr
 
-		if named.Obj().Pkg() == c.pkg {
+		if named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil {
 			ident = ast.NewIdent(named.Obj().Name())
 		} else {
 			ident = &ast.SelectorExpr{
@@ -1701,7 +1701,9 @@ func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
 				Rhs: []ast.Expr{&ast.CallExpr{
 					Fun: ast.NewIdent("make"),
 					Args: []ast.Expr{
-						ident,
+						&ast.ArrayType{
+							Elt: ident,
+						},
 						&ast.CallExpr{
 							Fun: &ast.SelectorExpr{
 								X:   ast.NewIdent("r"),
@@ -1807,10 +1809,10 @@ func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
 }
 
 func (c *constructor) new(name ast.Expr, t types.Type) []ast.Stmt {
-	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg) {
+	if named, ok := t.(*types.Named); ok && (named.Obj().Exported() || named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil) {
 		var ident ast.Expr
 
-		if named.Obj().Pkg() == c.pkg {
+		if named.Obj().Pkg() == c.pkg || named.Obj().Pkg() == nil {
 			ident = ast.NewIdent(named.Obj().Name())
 		} else {
 			ident = &ast.SelectorExpr{
