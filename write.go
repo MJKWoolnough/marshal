@@ -1737,6 +1737,61 @@ func makeSlice() *ast.FuncDecl {
 
 func (c *constructor) readMap(name ast.Expr, t *types.Map) {
 	c.needMap = true
+
+	d := c.subConstructor()
+
+	d.addStatement(&ast.AssignStmt{
+		Lhs: []ast.Expr{
+			ast.NewIdent("k"),
+			ast.NewIdent("v"),
+		},
+		Tok: token.DEFINE,
+		Rhs: []ast.Expr{
+			&ast.CallExpr{
+				Fun: ast.NewIdent("_make_key_value"),
+				Args: []ast.Expr{
+					name,
+				},
+			},
+		},
+	})
+	d.readType(ast.NewIdent("k"), t.Key())
+	d.readType(ast.NewIdent("v"), t.Elem())
+	d.addStatement(&ast.AssignStmt{
+		Lhs: []ast.Expr{
+			&ast.IndexExpr{
+				X:     name,
+				Index: ast.NewIdent("k"),
+			},
+		},
+		Tok: token.ASSIGN,
+		Rhs: []ast.Expr{
+			ast.NewIdent("v"),
+		},
+	})
+
+	c.addStatement(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun: ast.NewIdent("_make_map"),
+			Args: []ast.Expr{
+				&ast.UnaryExpr{
+					Op: token.AND,
+					X:  name,
+				},
+			},
+		},
+	})
+	c.addStatement(&ast.RangeStmt{
+		X: &ast.CallExpr{
+			Fun: &ast.SelectorExpr{
+				X:   ast.NewIdent("r"),
+				Sel: ast.NewIdent("ReadUintX"),
+			},
+		},
+		Body: &ast.BlockStmt{
+			List: d.statements,
+		},
+	})
 }
 
 func makeMap() []ast.Decl {
