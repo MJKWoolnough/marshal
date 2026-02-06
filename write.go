@@ -1659,26 +1659,11 @@ func (c *constructor) readArray(name ast.Expr, t *types.Array) {
 }
 
 func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
-	d := c.subConstructor()
-
-	d.readType(&ast.IndexExpr{
-		X:     name,
-		Index: ast.NewIdent("n"),
-	}, t.Elem())
-
 	for _, stmt := range c.make(name, t.Elem()) {
 		c.addStatement(stmt)
 	}
 
-	c.addStatement(&ast.RangeStmt{
-		For: c.newLine(),
-		Key: ast.NewIdent("n"),
-		Tok: token.DEFINE,
-		X:   name,
-		Body: &ast.BlockStmt{
-			List: d.statements,
-		},
-	})
+	c.readArray(name, types.NewArray(t.Elem(), 0))
 }
 
 func (c *constructor) make(name ast.Expr, t types.Type) []ast.Stmt {
