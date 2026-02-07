@@ -2,7 +2,7 @@ module vimagination.zapto.org/marshal
 
 go 1.25.5
 
-require vimagination.zapto.org/gotypes v1.2.1
+require vimagination.zapto.org/gotypes v1.3.0
 
 require (
 	golang.org/x/mod v0.31.0 // indirect
