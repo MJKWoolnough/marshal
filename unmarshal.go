@@ -715,7 +715,6 @@ func (c *constructor) readMap(name ast.Expr, t *types.Map) {
 			ast.NewIdent("v"),
 		},
 	})
-
 	c.addStatement(&ast.RangeStmt{
 		X: &ast.CallExpr{
 			Fun: &ast.SelectorExpr{
