@@ -1661,6 +1661,36 @@ func (c *constructor) readArray(name ast.Expr, t *types.Array) {
 }
 
 func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
+	c.makeSlice(name, t)
+	c.readArray(name, types.NewArray(t.Elem(), 0))
+}
+
+func (c *constructor) makeSlice(name ast.Expr, t *types.Slice) {
+	if typename := c.accessibleIdent(t.Elem()); typename != nil {
+		c.addStatement(&ast.AssignStmt{
+			Lhs: []ast.Expr{name},
+			Tok: token.ASSIGN,
+			Rhs: []ast.Expr{
+				&ast.CallExpr{
+					Fun: ast.NewIdent("make"),
+					Args: []ast.Expr{
+						&ast.ArrayType{
+							Elt: typename,
+						},
+						&ast.CallExpr{
+							Fun: &ast.SelectorExpr{
+								X:   ast.NewIdent("r"),
+								Sel: ast.NewIdent("ReadUintX"),
+							},
+						},
+					},
+				},
+			},
+		})
+
+		return
+	}
+
 	c.needSlice = true
 
 	c.addStatement(&ast.ExprStmt{
@@ -1680,7 +1710,6 @@ func (c *constructor) readSlice(name ast.Expr, t *types.Slice) {
 			},
 		},
 	})
-	c.readArray(name, types.NewArray(t.Elem(), 0))
 }
 
 func makeSlice() *ast.FuncDecl {
@@ -1736,25 +1765,9 @@ func makeSlice() *ast.FuncDecl {
 }
 
 func (c *constructor) readMap(name ast.Expr, t *types.Map) {
-	c.needMap = true
-
 	d := c.subConstructor()
 
-	d.addStatement(&ast.AssignStmt{
-		Lhs: []ast.Expr{
-			ast.NewIdent("k"),
-			ast.NewIdent("v"),
-		},
-		Tok: token.DEFINE,
-		Rhs: []ast.Expr{
-			&ast.CallExpr{
-				Fun: ast.NewIdent("_make_key_value"),
-				Args: []ast.Expr{
-					name,
-				},
-			},
-		},
-	})
+	d.addStatement(c.makeMap(name, t))
 	d.readType(ast.NewIdent("k"), t.Key())
 	d.readType(ast.NewIdent("v"), t.Elem())
 	d.addStatement(&ast.AssignStmt{
@@ -1770,17 +1783,6 @@ func (c *constructor) readMap(name ast.Expr, t *types.Map) {
 		},
 	})
 
-	c.addStatement(&ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: ast.NewIdent("_make_map"),
-			Args: []ast.Expr{
-				&ast.UnaryExpr{
-					Op: token.AND,
-					X:  name,
-				},
-			},
-		},
-	})
 	c.addStatement(&ast.RangeStmt{
 		X: &ast.CallExpr{
 			Fun: &ast.SelectorExpr{
@@ -1792,6 +1794,76 @@ func (c *constructor) readMap(name ast.Expr, t *types.Map) {
 			List: d.statements,
 		},
 	})
+}
+
+func (c *constructor) makeMap(name ast.Expr, t *types.Map) ast.Stmt {
+	if keytypename, valuetypename := c.accessibleIdent(t.Key()), c.accessibleIdent(t.Elem()); keytypename != nil && valuetypename != nil {
+		c.addStatement(&ast.AssignStmt{
+			Lhs: []ast.Expr{name},
+			Tok: token.ASSIGN,
+			Rhs: []ast.Expr{
+				&ast.CallExpr{
+					Fun: ast.NewIdent("make"),
+					Args: []ast.Expr{
+						&ast.MapType{
+							Key:   keytypename,
+							Value: valuetypename,
+						},
+					},
+				},
+			},
+		})
+
+		return &ast.DeclStmt{
+			Decl: &ast.GenDecl{
+				Tok: token.VAR,
+				Specs: []ast.Spec{
+					&ast.ValueSpec{
+						Names: []*ast.Ident{
+							ast.NewIdent("k"),
+						},
+						Type: keytypename,
+					},
+					&ast.ValueSpec{
+						Names: []*ast.Ident{
+							ast.NewIdent("v"),
+						},
+						Type: valuetypename,
+					},
+				},
+			},
+		}
+	}
+
+	c.needMap = true
+
+	c.addStatement(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun: ast.NewIdent("_make_map"),
+			Args: []ast.Expr{
+				&ast.UnaryExpr{
+					Op: token.AND,
+					X:  name,
+				},
+			},
+		},
+	})
+
+	return &ast.AssignStmt{
+		Lhs: []ast.Expr{
+			ast.NewIdent("k"),
+			ast.NewIdent("v"),
+		},
+		Tok: token.DEFINE,
+		Rhs: []ast.Expr{
+			&ast.CallExpr{
+				Fun: ast.NewIdent("_make_key_value"),
+				Args: []ast.Expr{
+					name,
+				},
+			},
+		},
+	}
 }
 
 func makeMap() []ast.Decl {
@@ -1922,21 +1994,9 @@ func makeMap() []ast.Decl {
 }
 
 func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
-	c.needPtr = true
-
 	d := c.subConstructor()
 
-	d.addStatement(&ast.ExprStmt{
-		X: &ast.CallExpr{
-			Fun: ast.NewIdent("_new"),
-			Args: []ast.Expr{
-				&ast.UnaryExpr{
-					Op: token.AND,
-					X:  name,
-				},
-			},
-		},
-	})
+	c.new(name, t)
 	d.readType(name, t.Elem())
 	c.addStatement(&ast.IfStmt{
 		Cond: &ast.CallExpr{
@@ -1947,6 +2007,35 @@ func (c *constructor) readPointer(name ast.Expr, t *types.Pointer) {
 		},
 		Body: &ast.BlockStmt{
 			List: d.statements,
+		},
+	})
+}
+
+func (c *constructor) new(name ast.Expr, t *types.Pointer) {
+	if typename := c.accessibleIdent(t.Elem()); typename != nil {
+		c.addStatement(&ast.AssignStmt{
+			Lhs: []ast.Expr{name},
+			Tok: token.ASSIGN,
+			Rhs: []ast.Expr{&ast.CallExpr{
+				Fun:  ast.NewIdent("new"),
+				Args: []ast.Expr{typename},
+			}},
+		})
+
+		return
+	}
+
+	c.needPtr = true
+
+	c.addStatement(&ast.ExprStmt{
+		X: &ast.CallExpr{
+			Fun: ast.NewIdent("_new"),
+			Args: []ast.Expr{
+				&ast.UnaryExpr{
+					Op: token.AND,
+					X:  name,
+				},
+			},
 		},
 	})
 }
