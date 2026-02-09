@@ -747,7 +747,6 @@ func (c *constructor) writeSlice(name ast.Expr, t *types.Slice) {
 			},
 		},
 	})
-
 	c.writeArray(name, types.NewArray(t.Elem(), 0))
 }
 
